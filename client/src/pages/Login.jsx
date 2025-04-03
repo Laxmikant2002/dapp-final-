@@ -1,11 +1,29 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { ethers } from "ethers";
+import contractABI from "../contracts/Abi.json"; // Import ABI
 
 const Login = ({ wallet }) => {
   const navigate = useNavigate();
 
   const connectWallet = async () => {
-    navigate("/Dashboard"); // Directly navigate to the dashboard
+    try {
+      if (!window.ethereum) {
+        alert("Please install MetaMask!");
+        return;
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contractAddress = "YOUR_CONTRACT_ADDRESS_HERE"; // Replace with your contract address
+      const contract = new ethers.Contract(contractAddress, contractABI.abi, signer);
+
+      wallet(provider, contract, signer); // Pass provider, contract, and signer to the parent
+      navigate("/Dashboard"); // Navigate to the dashboard
+    } catch (error) {
+      console.error("Error connecting wallet:", error);
+      alert("Failed to connect wallet. Please try again.");
+    }
   };
 
   return (
