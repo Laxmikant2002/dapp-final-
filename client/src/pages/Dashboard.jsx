@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import Navigation from "./Navigation";
 import List from "../components/List";
 import UserCard from "../components/UserCard";
@@ -44,7 +44,7 @@ const Dashboard = ({ state, info, details, pIdEc, setinfo }) => {
     exchanges: [cacheExchange, fetchExchange],
   });
 
-  const getPidEc = async () => {
+  const getPidEc = useCallback(async () => {
     if (!state.contract) {
       console.error("Contract is not initialized");
       toast.error("Contract is not initialized. Please connect your wallet.");
@@ -58,26 +58,18 @@ const Dashboard = ({ state, info, details, pIdEc, setinfo }) => {
       console.error("Error fetching poll ID or election commission:", error);
       toast.error("Failed to fetch poll details. Please try again.");
     }
-  };
+  }, [state.contract, details]);
 
-  const setifo = async () => {
+  const setifo = useCallback(async () => {
     const { data } = await client.query(query).toPromise();
     setinfo(data);
-    if (typeof data == "undefined") {
-      setRun(false);
-    } else {
-      setRun(true);
-    }
-  };
+    setRun(typeof data !== "undefined");
+  }, [client, query, setinfo]);
 
   useEffect(() => {
-    if (state.contract) {
-      getPidEc();
-      setifo();
-    } else {
-      console.warn("Waiting for contract to initialize...");
-    }
-  }, [state.contract]);
+    getPidEc();
+    setifo();
+  }, [getPidEc, setifo]);
 
   return (
     <div className="flex  h-[100%]  space-x-12 ">

@@ -29,22 +29,6 @@ const Voter = ({ state, handleCase }) => {
     }
   };
 
-  const handleVoting = async (event) => {
-    event.preventDefault();
-    const voterId = document.querySelector("#voterId").value;
-    const candidateId = document.querySelector("#candidateId").value;
-
-    try {
-      await state.contract.vote.send(voterId, candidateId);
-      toast.success("User voted successfully");
-    } catch (error) {
-      console.error(error);
-      toast.error(error.reason);
-    }
-
-    // console.log(voterId,candidateId)
-  };
-
   return (
     <>
       <div className="flex  h-[100%] space-x-32">

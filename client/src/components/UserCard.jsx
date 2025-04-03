@@ -40,10 +40,10 @@ const Card = ({ state}) => {
   }
 
   useEffect(() => {
-    voterRegisteredCheck();
+    checkVoterid();
     votedOrNot();
-    register ? checkVoterid():seNullVoterId();
-  }, [voted,register,voterId]);
+    voterRegisteredCheck();
+  }, []); // Removed dependencies as these functions don't change
 
   return (
     <div className="w-[90%]  rounded-3xl p-px bg-gradient-to-b from-blue-300 to-pink-300 dark:from-blue-800 dark:to-purple-800 transition-all duration-700 hover:shadow-[0_3px_10px_rgb(0.4,0.4,0.4,0.4)] dark:hover:shadow-cyan-500/50 ">

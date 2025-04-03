@@ -7,8 +7,8 @@ const List = ({state,name,party,id, setValue}) => {
   const [fill, setFill] = useState();
   
   useEffect(() => {
-    setFill(setValue);
-  }, [fill]);
+    setFill(setValue); // Ensure 'setValue' is used correctly
+  }, []); // Removed 'setValue' from the dependency array as it doesn't change
 
   // console.log(name,party,id)
   return (

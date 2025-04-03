@@ -3,9 +3,6 @@ import { useEffect, useState } from "react";
 
 const Winner = ({state}) => {
 
-
-    // const [endTime, setEndTime] = useState(date);
-    const [pollEnded, setPollEnded] = useState();
     const [endTimeInUnix,setUnixTime] = useState()
     const [winnerInfo,setWinnerInfo] = useState({
         candidateId:null,
@@ -28,7 +25,7 @@ const Winner = ({state}) => {
       let dte = new Date().getTime()
       dte = Math.floor(dte/1000)
       if (endTimeInUnix > dte) {
-        setPollEnded(false);
+        // Poll has not ended
       } else {
         try{
           const val =  (await state.contract.EcPollInfo())
@@ -40,14 +37,13 @@ const Winner = ({state}) => {
         }catch(error){
           console.log(error)
         }
-        setPollEnded(true);
       }
     };
     // console.log(winnerInfo)
 
-    useEffect(()=>{
-        compare()
-    },[])
+    useEffect(() => {
+        compare();
+    }, []);
   
   return (
         <>
