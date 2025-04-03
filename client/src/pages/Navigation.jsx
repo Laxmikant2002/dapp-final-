@@ -52,6 +52,28 @@ const Navigation = () => {
                       <p className="ml-3">Election Commission</p>
                   </button>
               </Link>
+
+              <Link to="/VoterList">
+  <button className="flex p-2 items-center hover:bg-[#4e6dec] rounded-md w-56 h-14">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.5}
+      stroke="currentColor"
+      className="w-6 h-6"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M16 12a4 4 0 11-8 0 4 4 0 018 0zm-4 6c-4.418 0-8 2.015-8 4v1h16v-1c0-1.985-3.582-4-8-4z"
+      />
+    </svg>
+    <p className="ml-3">Voter List</p>
+  </button>
+</Link>
+
+
         </div>
 
         <div className="">

@@ -3,6 +3,7 @@ import Nav from "./pages/Nav";
 import Dashboard from "./pages/Dashboard";
 import Candidate from "./pages/Candidate";
 import Voter from "./pages/Voter";
+import Vote from "./pages/Vote"; // Renamed import to avoid conflict
 import ElectionCommission from "./pages/ElectionCommission";
 // import { RouterProvider,createBrowserRouter,Navigate,Router,Routes, Route } from "react-router-dom";
 import { BrowserRouter as Router,Routes, Route } from "react-router-dom";
@@ -87,8 +88,9 @@ function App() {
       <Routes>
         <Route path="/" element={<Login wallet={wallet} />} />
         <Route path="/Dashboard" element={<Dashboard state={state} info={info} details={details} setinfo={setinfo} pIdEc={pIdEc}  />} />
-        <Route path="Candidate" element={<Candidate state={state} handleCase={handleCase} />} />
-        <Route path="/Voter" element={<Voter state={state} handleCase={handleCase}  />} />
+        <Route path="/Candidate" element={<Candidate state={state} handleCase={handleCase} />} />
+        <Route path="/Voter" element={<Voter state={state} handleCase={handleCase} />} />
+        <Route path="/Vote" element={<Vote state={state} handleCase={handleCase} />} /> {/* Updated route */}
         <Route path="/ElectionCommission" element={<ElectionCommission state={state} handleCase={handleCase} />} />
       </Routes>
     </Router>
