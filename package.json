@@ -1,0 +1,35 @@
+{
+  "devDependencies": {
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.12",
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@nomiclabs/hardhat-waffle": "^2.0.6",
+    "chai": "^4.5.0",
+    "ethereum-waffle": "^4.0.10",
+    "ethers": "^5.8.0",
+    "hardhat": "^2.22.19"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  },
+  "name": "voting-dapp-master",
+  "version": "1.0.0",
+  "description": "Build using Ethereum, React.js, Tailwind CSS, The Graph, and ethers.js.",
+  "main": "decodeKey.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Laxmikant2002/Polling-Dapp.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Laxmikant2002/Polling-Dapp/issues"
+  },
+  "homepage": "https://github.com/Laxmikant2002/Polling-Dapp#readme"
+}
