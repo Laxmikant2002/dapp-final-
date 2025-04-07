@@ -21,7 +21,6 @@ const Elections = () => {
         return;
       }
 
-      if (!contract) return;
       fetchElections();
     };
 
@@ -31,11 +30,35 @@ const Elections = () => {
   const fetchElections = async () => {
     try {
       setIsLoading(true);
-      const electionsData = await contract.getElections();
-      setElections(electionsData);
-      setFilteredElections(electionsData);
+      // Mock elections data
+      const mockElections = [
+        {
+          id: '1',
+          title: 'Student Council Election',
+          description: 'Vote for your student council representatives',
+          status: 'active',
+          totalVotes: 150
+        },
+        {
+          id: '2',
+          title: 'Class President Election',
+          description: 'Choose your class president for the academic year',
+          status: 'upcoming',
+          totalVotes: 0
+        },
+        {
+          id: '3',
+          title: 'Department Head Election',
+          description: 'Select the new department head',
+          status: 'ended',
+          totalVotes: 200
+        }
+      ];
+      
+      setElections(mockElections);
+      setFilteredElections(mockElections);
     } catch (error) {
-      console.error('Error fetching elections:', error);
+      console.error('Mock error fetching elections:', error);
       toast.error('Failed to fetch elections');
     } finally {
       setIsLoading(false);
@@ -146,7 +169,6 @@ const Elections = () => {
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 };

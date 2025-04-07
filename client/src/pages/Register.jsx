@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useContract } from '../hooks/useContract';
-import { useMetaMask } from '../hooks/useMetaMask';
+import { useContract } from '../context/ContractContext';
 import RegisterForm from '../components/RegisterForm';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -12,117 +11,34 @@ const Register = () => {
   const [searchParams] = useSearchParams();
   const role = searchParams.get('role');
   const { contract } = useContract();
-  const { isConnected } = useMetaMask();
   const [isCheckingRegistration, setIsCheckingRegistration] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Basic validations that don't need async operations
-    if (!isConnected) {
-      toast.error('Please connect your wallet first');
-      navigate('/');
-      return;
-    }
-
-    if (!role || (role !== 'voter' && role !== 'admin')) {
-      toast.error('Invalid role selected');
-      navigate('/');
-      return;
-    }
-
-    // Check contract and registration status
+    // Mock registration check
     const checkRegistration = async () => {
-      if (!contract) {
-        console.error('Contract not initialized. Contract state:', contract);
-        toast.error('Contract not initialized. Please make sure you are connected to the Hardhat network');
-        setIsCheckingRegistration(false);
-        return;
-      }
-
       try {
-        console.log('Checking registration for role:', role);
-        console.log('Contract methods:', contract.functions);
-        
-        let isRegistered;
-        if (role === 'voter') {
-          console.log('Checking voter registration...');
-          isRegistered = await contract.checkVoterRegistered();
-        } else {
-          console.log('Checking candidate registration...');
-          isRegistered = await contract.checkCandidateRegistered();
-        }
-        
-        console.log('Registration status:', isRegistered);
-
-        if (isRegistered) {
-          toast.error(`You are already registered as a ${role}`);
-          navigate(role === 'voter' ? '/elections' : '/admin');
-          return;
-        }
+        console.log('Mock checking registration for role:', role);
+        // Simulate a delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setIsCheckingRegistration(false);
       } catch (error) {
-        console.error('Registration check error details:', {
-          message: error.message,
-          code: error.code,
-          role: role,
-          contractAddress: contract.address
-        });
-        
-        if (error.code === 'NETWORK_ERROR') {
-          toast.error('Network error. Please make sure you are connected to the Hardhat network');
-        } else if (error.code === 'CALL_EXCEPTION') {
-          toast.error('Contract call failed. Please make sure the contract is properly deployed');
-        } else {
-          toast.error(`Failed to check registration status: ${error.message}`);
-        }
-      } finally {
+        console.error('Mock registration check error:', error);
+        toast.error('Mock registration check failed');
         setIsCheckingRegistration(false);
       }
     };
 
     checkRegistration();
-  }, [isConnected, role, navigate, contract]);
+  }, [role]);
 
   const handleRegister = async (formData) => {
-    if (!contract) {
-      toast.error('Contract not initialized');
-      return;
-    }
-
-    if (!formData.photo) {
-      toast.error('Please capture your photo before submitting');
-      return;
-    }
-
     try {
       setIsSubmitting(true);
-      toast.loading('Submitting registration...');
+      toast.loading('Mock submitting registration...');
 
-      // Create registration data object
-      const registrationData = {
-        fullName: formData.fullName,
-        age: parseInt(formData.age),
-        gender: formData.gender,
-        photo: formData.photo, // Include the photo data
-        location: formData.location // This will be party name for candidates
-      };
-
-      // Call the appropriate contract function based on role
-      const tx = role === 'voter'
-        ? await contract.voterRegister(
-            registrationData.fullName,
-            registrationData.age,
-            registrationData.gender
-          )
-        : await contract.candidateRegister(
-            registrationData.fullName,
-            registrationData.location,
-            registrationData.age,
-            registrationData.gender
-          );
-
-      // Wait for transaction confirmation
-      toast.loading('Waiting for blockchain confirmation...');
-      await tx.wait();
+      // Simulate a delay for mock transaction
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       // Show success message and redirect
       toast.success(`Successfully registered as ${role}!`);
@@ -134,8 +50,8 @@ const Register = () => {
         navigate('/admin');
       }
     } catch (error) {
-      console.error('Registration error:', error);
-      toast.error(error.message || 'Registration failed. Please try again.');
+      console.error('Mock registration error:', error);
+      toast.error('Mock registration failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -154,7 +70,7 @@ const Register = () => {
               {isCheckingRegistration ? (
                 <div className="text-center py-8">
                   <i className="fas fa-spinner fa-spin text-2xl text-custom mb-3"></i>
-                  <p className="text-gray-600">Checking registration status...</p>
+                  <p className="text-gray-600">Mock checking registration status...</p>
                 </div>
               ) : (
                 <RegisterForm
@@ -167,7 +83,6 @@ const Register = () => {
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 };

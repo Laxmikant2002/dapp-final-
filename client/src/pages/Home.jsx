@@ -10,7 +10,6 @@ const Home = () => {
   const { account, connectWallet } = useContract();
   const [showChoiceScreen, setShowChoiceScreen] = useState(false);
 
-  // Add useEffect to show choice screen when account is connected
   useEffect(() => {
     if (account) {
       setShowChoiceScreen(true);
@@ -22,12 +21,12 @@ const Home = () => {
   const handleConnect = async () => {
     try {
       const connectedAccount = await connectWallet();
-      console.log("Connected Account:", connectedAccount); // Debugging log
+      console.log("Mock Connected Account:", connectedAccount);
       if (connectedAccount) {
-        toast.success('Wallet connected successfully!');
+        toast.success('Mock wallet connected successfully!');
       }
     } catch (error) {
-      toast.error(error.message);
+      toast.error('Mock connection failed');
       setShowChoiceScreen(false);
     }
   };
@@ -41,7 +40,7 @@ const Home = () => {
       <Header />
       <main className="pt-16">
         {/* Choice Screen Modal */}
-        {showChoiceScreen && ( // Rely only on showChoiceScreen
+        {showChoiceScreen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white p-8 rounded-lg max-w-2xl w-full mx-4">
               <h2 className="text-2xl font-bold text-center mb-6">Choose Your Role</h2>
@@ -114,7 +113,6 @@ const Home = () => {
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 };

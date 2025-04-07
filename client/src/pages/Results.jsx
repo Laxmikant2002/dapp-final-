@@ -25,7 +25,6 @@ const Results = () => {
         return;
       }
 
-      if (!contract) return;
       fetchResults();
     };
 
@@ -35,32 +34,32 @@ const Results = () => {
   const fetchResults = async () => {
     try {
       setIsLoading(true);
-      // Check if results are restricted
-      const election = await contract.getElection(id);
-      const isRestricted = election.isRestricted;
-      setIsRestricted(isRestricted);
+      // Mock results data
+      const mockResults = {
+        candidates: [
+          {
+            name: 'John Doe',
+            votes: 75,
+            percentage: '37.5'
+          },
+          {
+            name: 'Jane Smith',
+            votes: 100,
+            percentage: '50.0'
+          },
+          {
+            name: 'Mike Johnson',
+            votes: 25,
+            percentage: '12.5'
+          }
+        ],
+        totalVotes: 200
+      };
 
-      if (isRestricted) {
-        const hasVoted = await contract.hasVoted(id, account);
-        if (!hasVoted) {
-          toast.error('You must vote to view these results');
-          navigate('/voting/' + id);
-          return;
-        }
-      }
-
-      // Fetch results from contract
-      const resultsData = await contract.getResults(id);
-      setResults({
-        candidates: resultsData.candidates.map((candidate, index) => ({
-          name: candidate.name,
-          votes: candidate.votes.toNumber(),
-          percentage: (candidate.votes.toNumber() / resultsData.totalVotes.toNumber() * 100).toFixed(2)
-        })),
-        totalVotes: resultsData.totalVotes.toNumber()
-      });
+      setResults(mockResults);
+      setIsRestricted(false);
     } catch (error) {
-      console.error('Error fetching results:', error);
+      console.error('Mock error fetching results:', error);
       toast.error('Failed to load results');
     } finally {
       setIsLoading(false);
@@ -180,7 +179,6 @@ const Results = () => {
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 };

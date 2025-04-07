@@ -23,7 +23,6 @@ const Voting = () => {
         return;
       }
 
-      if (!contract) return;
       fetchElectionData();
     };
 
@@ -33,51 +32,42 @@ const Voting = () => {
   const fetchElectionData = async () => {
     try {
       setIsLoading(true);
-      // Check if user has already voted
-      const voted = await contract.hasVoted(id, account);
-      setHasVoted(voted);
+      // Mock election data
+      const mockElection = {
+        id: id,
+        title: 'Student Council Election',
+        description: 'Vote for your student council representatives',
+        timeRemaining: '2 days 5 hours',
+        status: 'active'
+      };
 
-      if (voted) {
-        toast.error('You have already voted in this election');
-        navigate('/results/' + id);
-        return;
-      }
+      const mockCandidates = [
+        {
+          id: 1,
+          name: 'John Doe',
+          description: 'Computer Science Department'
+        },
+        {
+          id: 2,
+          name: 'Jane Smith',
+          description: 'Engineering Department'
+        },
+        {
+          id: 3,
+          name: 'Mike Johnson',
+          description: 'Business Department'
+        }
+      ];
 
-      // Fetch election details from contract
-      const electionData = await contract.getElection(id);
-      const candidatesData = await contract.getCandidates(id);
-
-      setElection({
-        id: electionData.id.toString(),
-        title: electionData.title,
-        description: electionData.description,
-        timeRemaining: calculateTimeRemaining(electionData.endTime),
-        status: electionData.status
-      });
-
-      setCandidates(candidatesData.map((candidate, index) => ({
-        id: index + 1,
-        name: candidate.name,
-        description: candidate.description
-      })));
+      setElection(mockElection);
+      setCandidates(mockCandidates);
+      setHasVoted(false);
     } catch (error) {
-      console.error('Error fetching election data:', error);
+      console.error('Mock error fetching election data:', error);
       toast.error('Failed to load election data');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const calculateTimeRemaining = (endTime) => {
-    const now = Math.floor(Date.now() / 1000);
-    const remaining = endTime - now;
-    
-    if (remaining <= 0) return 'Election ended';
-    
-    const days = Math.floor(remaining / 86400);
-    const hours = Math.floor((remaining % 86400) / 3600);
-    
-    return `${days} days ${hours} hours`;
   };
 
   const handleVote = async () => {
@@ -87,13 +77,13 @@ const Voting = () => {
     }
 
     try {
-      const tx = await contract.vote(id, selectedCandidate);
-      await tx.wait();
+      // Simulate voting delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      toast.success('Vote submitted successfully!');
+      toast.success('Mock vote submitted successfully!');
       navigate('/results/' + id);
     } catch (error) {
-      console.error('Error submitting vote:', error);
+      console.error('Mock error submitting vote:', error);
       toast.error('Failed to submit vote');
     }
   };
@@ -189,7 +179,6 @@ const Voting = () => {
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 };
