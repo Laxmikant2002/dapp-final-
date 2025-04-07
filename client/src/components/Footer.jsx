@@ -39,15 +39,24 @@ const Footer = () => {
               </li>
             </ul>
             <div className="mt-8 flex space-x-6">
-              <a href="#" className="text-gray-400 hover:text-gray-300">
+              <button
+                onClick={() => window.open('https://twitter.com', '_blank')}
+                className="text-gray-400 hover:text-gray-300 bg-transparent border-none p-0 cursor-pointer"
+              >
                 <i className="fab fa-twitter text-xl"></i>
-              </a>
-              <a href="#" className="text-gray-400 hover:text-gray-300">
+              </button>
+              <button
+                onClick={() => window.open('https://linkedin.com', '_blank')}
+                className="text-gray-400 hover:text-gray-300 bg-transparent border-none p-0 cursor-pointer"
+              >
                 <i className="fab fa-linkedin text-xl"></i>
-              </a>
-              <a href="#" className="text-gray-400 hover:text-gray-300">
+              </button>
+              <button
+                onClick={() => window.open('https://github.com', '_blank')}
+                className="text-gray-400 hover:text-gray-300 bg-transparent border-none p-0 cursor-pointer"
+              >
                 <i className="fab fa-github text-xl"></i>
-              </a>
+              </button>
             </div>
           </div>
         </div>

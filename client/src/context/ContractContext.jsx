@@ -9,14 +9,10 @@ export { ContractContext };
 
 export const ContractProvider = ({ children }) => {
   const [account, setAccount] = useState('0x1234...5678'); // Mock account
-  const [isAdmin, setIsAdmin] = useState(false);
   const [contract, setContract] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Mock checkAdminStatus function
-  const checkAdminStatus = async (contractInstance, address) => {
-    return false; // Mock non-admin status
-  };
+  const [userRole, setUserRole] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Mock initializeContract function
   const initializeContract = async (provider, signer) => {
@@ -36,6 +32,14 @@ export const ContractProvider = ({ children }) => {
       // Mock contract initialization
       const mockContract = await initializeContract(null, null);
       setContract(mockContract);
+      
+      // Check if user is already logged in
+      const storedRole = localStorage.getItem('userRole');
+      const storedEmail = localStorage.getItem('userEmail');
+      if (storedRole && storedEmail) {
+        setUserRole(storedRole);
+        setIsAuthenticated(true);
+      }
     } catch (error) {
       console.error('Mock initialization error:', error);
     }
@@ -44,7 +48,7 @@ export const ContractProvider = ({ children }) => {
 
   useEffect(() => {
     initialize();
-  }, []);
+  }, []); // Remove initialize from dependency array as it's defined in the same scope
 
   // Mock connectWallet function
   const connectWallet = async () => {
@@ -60,13 +64,36 @@ export const ContractProvider = ({ children }) => {
     }
   };
 
+  const login = async (email, role) => {
+    try {
+      localStorage.setItem('userEmail', email);
+      localStorage.setItem('userRole', role);
+      setUserRole(role);
+      setIsAuthenticated(true);
+      return true;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userRole');
+    setUserRole(null);
+    setIsAuthenticated(false);
+  };
+
   return (
     <ContractContext.Provider value={{ 
       account, 
-      isAdmin, 
       contract, 
       isLoading,
-      connectWallet 
+      connectWallet,
+      userRole,
+      isAuthenticated,
+      login,
+      logout
     }}>
       {children}
     </ContractContext.Provider>

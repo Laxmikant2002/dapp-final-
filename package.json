@@ -9,7 +9,10 @@
     "hardhat": "^2.22.19"
   },
   "dependencies": {
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "framer-motion": "^12.6.3",
+    "qrcode.react": "^4.2.0",
+    "xlsx": "^0.18.5"
   },
   "name": "voting-dapp-master",
   "version": "1.0.0",
