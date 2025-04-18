@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-// import { ethers } from 'ethers';
-// import ABI from '../contracts/Abi.json';
-import { toast } from 'sonner';
+import { ethers } from 'ethers';
+import detectEthereumProvider from '@metamask/detect-provider';
+import { toast } from 'react-hot-toast';
+import VoteABI from '../contracts/Vote.json';
+import contractAddress from '../contracts/contract-address.json';
 
 const ContractContext = createContext();
 
@@ -15,97 +17,92 @@ export const ContractProvider = ({ children }) => {
   const [provider, setProvider] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
 
-  // Mock data for testing
-  const mockElections = [
-    {
-      id: 1,
-      title: "Student Council Election 2024",
-      description: "Vote for your student council representatives",
-      startTime: Date.now() / 1000,
-      endTime: (Date.now() / 1000) + 86400,
-      isActive: true,
-      candidates: [
-        { name: "John Doe", description: "Computer Science", voteCount: 150 },
-        { name: "Jane Smith", description: "Business Administration", voteCount: 120 },
-        { name: "Mike Johnson", description: "Engineering", voteCount: 90 }
-      ]
-    },
-    {
-      id: 2,
-      title: "Department Head Election",
-      description: "Select your department head",
-      startTime: Date.now() / 1000,
-      endTime: (Date.now() / 1000) + 172800,
-      isActive: true,
-      candidates: [
-        { name: "Dr. Sarah Wilson", description: "Computer Science", voteCount: 200 },
-        { name: "Dr. Robert Brown", description: "Engineering", voteCount: 180 }
-      ]
+  useEffect(() => {
+    checkIfWalletIsConnected();
+  }, []);
+
+  const checkIfWalletIsConnected = async () => {
+    try {
+      const provider = await detectEthereumProvider();
+      
+      if (provider) {
+        const accounts = await provider.request({ method: 'eth_accounts' });
+        if (accounts.length > 0) {
+          setAccount(accounts[0]);
+          setIsConnected(true);
+          setupEventListeners();
+          initializeContract();
+        }
+      }
+    } catch (error) {
+      console.error('Error checking wallet connection:', error);
     }
-  ];
+  };
 
-  const mockVoters = [
-    {
-      name: "Alice Cooper",
-      email: "alice@example.com",
-      phone: "1234567890",
-      voterAddress: "0x456...",
-      isRegistered: true
-    },
-    {
-      name: "Bob Wilson",
-      email: "bob@example.com",
-      phone: "0987654321",
-      voterAddress: "0x789...",
-      isRegistered: true
+  const setupEventListeners = () => {
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('chainChanged', () => window.location.reload());
     }
-  ];
-
-  // Mock functions
-  const getElections = async () => {
-    return mockElections;
   };
 
-  const castVote = async (electionId, candidateId) => {
-    toast.success('Vote cast successfully!');
-    return true;
+  const handleAccountsChanged = (accounts) => {
+    if (accounts.length > 0) {
+      setAccount(accounts[0]);
+      setIsConnected(true);
+      initializeContract();
+    } else {
+      setAccount(null);
+      setIsConnected(false);
+      setContract(null);
+    }
   };
 
-  const getElectionResults = async (electionId) => {
-    const election = mockElections.find(e => e.id === electionId);
-    if (!election) return [];
-    
-    const totalVotes = election.candidates.reduce((sum, c) => sum + c.voteCount, 0);
-    return election.candidates.map(c => ({
-      name: c.name,
-      votes: c.voteCount,
-      percentage: totalVotes > 0 ? (c.voteCount / totalVotes) * 100 : 0
-    }));
-  };
+  const initializeContract = async () => {
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const voteContract = new ethers.Contract(
+        contractAddress.Vote,
+        VoteABI.abi,
+        signer
+      );
+      setContract(voteContract);
+      setProvider(provider);
 
-  const verifyVote = async (input) => {
-    return {
-      electionTitle: "Student Council Election 2024",
-      timestamp: Date.now() / 1000,
-      blockNumber: 12345,
-      verified: true
-    };
+      // Check if connected account is admin
+      const owner = await voteContract.owner();
+      setIsAdmin(owner.toLowerCase() === account.toLowerCase());
+    } catch (error) {
+      console.error('Error initializing contract:', error);
+      toast.error('Failed to initialize contract');
+    }
   };
 
   const connectWallet = async () => {
     try {
       setIsLoading(true);
-      // Simulate MetaMask connection
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
-      const mockAccount = '0x123...';
-      setAccount(mockAccount);
-      setIsConnected(true);
-      toast.success('Wallet connected successfully!');
-      return mockAccount;
+      const provider = await detectEthereumProvider();
+      
+      if (!provider) {
+        toast.error('Please install MetaMask!');
+        return;
+      }
+
+      const accounts = await provider.request({
+        method: 'eth_requestAccounts'
+      });
+
+      if (accounts.length > 0) {
+        setAccount(accounts[0]);
+        setIsConnected(true);
+        setupEventListeners();
+        await initializeContract();
+        toast.success('Wallet connected successfully!');
+      }
     } catch (error) {
       console.error('Error connecting wallet:', error);
       toast.error('Failed to connect wallet');
-      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -115,7 +112,47 @@ export const ContractProvider = ({ children }) => {
     setAccount(null);
     setIsConnected(false);
     setIsAdmin(false);
+    setContract(null);
     toast.success('Wallet disconnected');
+  };
+
+  // Contract interaction functions
+  const getElections = async () => {
+    try {
+      if (!contract) throw new Error('Contract not initialized');
+      const elections = await contract.candidateList();
+      return elections;
+    } catch (error) {
+      console.error('Error getting elections:', error);
+      toast.error('Failed to fetch elections');
+      return [];
+    }
+  };
+
+  const castVote = async (voterId, candidateId) => {
+    try {
+      if (!contract) throw new Error('Contract not initialized');
+      const tx = await contract.vote(voterId, candidateId);
+      await tx.wait();
+      toast.success('Vote cast successfully!');
+      return true;
+    } catch (error) {
+      console.error('Error casting vote:', error);
+      toast.error(error.message || 'Failed to cast vote');
+      return false;
+    }
+  };
+
+  const getElectionResults = async () => {
+    try {
+      if (!contract) throw new Error('Contract not initialized');
+      const results = await contract.result();
+      return results;
+    } catch (error) {
+      console.error('Error getting election results:', error);
+      toast.error('Failed to fetch election results');
+      return [];
+    }
   };
 
   return (
@@ -130,8 +167,7 @@ export const ContractProvider = ({ children }) => {
       provider,
       getElections,
       castVote,
-      getElectionResults,
-      verifyVote
+      getElectionResults
     }}>
       {children}
     </ContractContext.Provider>

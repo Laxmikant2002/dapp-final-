@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { ContractContext } from '../context/ContractContext';
-import { toast } from 'sonner';
+import { toast } from 'react-hot-toast';
 
 const ConnectWallet = () => {
   const { account, connectWallet, disconnectWallet, isLoading, isConnected } = useContext(ContractContext);

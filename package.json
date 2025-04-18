@@ -1,4 +1,16 @@
 {
+  "name": "voting-dapp",
+  "version": "1.0.0",
+  "description": "Blockchain-based Voting System",
+  "main": "index.js",
+  "scripts": {
+    "start": "node scripts/start.js",
+    "install:all": "npm install && cd client && npm install",
+    "client": "cd client && npm start",
+    "dev": "hardhat node",
+    "deploy": "hardhat run scripts/deploy.js --network localhost",
+    "test": "hardhat test"
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-network-helpers": "^1.0.12",
     "@nomiclabs/hardhat-ethers": "^2.2.3",

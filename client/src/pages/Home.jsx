@@ -4,9 +4,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConnectWallet from '../components/ConnectWallet';
 import Header from '../components/Header';
-import Footer from '../components/Footer';
-import { toast } from 'sonner';
 import { FaUserTie, FaUsers } from 'react-icons/fa';
+import BlockchainStatus from '../components/BlockchainStatus';
 
 const RoleSelectionModal = ({ onClose, onSelect }) => {
   return (
@@ -34,9 +33,7 @@ const RoleSelectionModal = ({ onClose, onSelect }) => {
           >
             <div className="flex items-center">
               <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center group-hover:bg-indigo-200">
-                <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
+                <FaUsers className="w-6 h-6 text-indigo-600" />
               </div>
               <div className="ml-4">
                 <h3 className="text-lg font-medium text-gray-900">Voter</h3>
@@ -44,7 +41,7 @@ const RoleSelectionModal = ({ onClose, onSelect }) => {
               </div>
             </div>
             <svg className="w-5 h-5 text-gray-400 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
             </svg>
           </button>
 
@@ -54,10 +51,7 @@ const RoleSelectionModal = ({ onClose, onSelect }) => {
           >
             <div className="flex items-center">
               <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+                <FaUserTie className="w-6 h-6 text-purple-600" />
               </div>
               <div className="ml-4">
                 <h3 className="text-lg font-medium text-gray-900">Admin</h3>
@@ -65,7 +59,7 @@ const RoleSelectionModal = ({ onClose, onSelect }) => {
               </div>
             </div>
             <svg className="w-5 h-5 text-gray-400 group-hover:text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
             </svg>
           </button>
         </div>
@@ -82,33 +76,10 @@ const RoleSelectionModal = ({ onClose, onSelect }) => {
 };
 
 const Home = () => {
-  const { isConnected, isAdmin, account, connectWallet } = useContext(ContractContext);
+  const { isConnected, account } = useContext(ContractContext);
   const [activeFeature, setActiveFeature] = useState(0);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveFeature((prev) => (prev + 1) % features.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    // Show role selection modal when wallet is connected
-    if (isConnected && account) {
-      setShowRoleModal(true);
-    }
-  }, [isConnected, account]);
-
-  const handleRoleSelection = (role) => {
-    setShowRoleModal(false);
-    if (role === 'admin') {
-      navigate('/login');
-    } else {
-      navigate('/register');
-    }
-  };
 
   const features = [
     {
@@ -139,6 +110,28 @@ const Home = () => {
       )
     }
   ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveFeature((prev) => (prev + 1) % features.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [features.length]);
+
+  useEffect(() => {
+    if (isConnected && account) {
+      setShowRoleModal(true);
+    }
+  }, [isConnected, account]);
+
+  const handleRoleSelection = (role) => {
+    setShowRoleModal(false);
+    if (role === 'admin') {
+      navigate('/login');
+    } else {
+      navigate('/register');
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -425,6 +418,10 @@ const Home = () => {
               </div>
             </dl>
           </div>
+        </div>
+
+        <div className="mt-10">
+          <BlockchainStatus />
         </div>
       </main>
 

@@ -11,13 +11,12 @@ module.exports = {
     localhost: {
       url: "http://127.0.0.1:8545",
       chainId: 31337
-    },
-    sepolia: {
-      url: process.env.INFURA_URL,
-      accounts: [process.env.PRIVATE_KEY]
     }
   },
-  mocha: {
-    timeout: 100000
+  paths: {
+    artifacts: "./artifacts",
+    cache: "./cache",
+    sources: "./contracts",
+    tests: "./test"
   }
 };
