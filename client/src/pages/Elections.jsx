@@ -1,99 +1,161 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useContext } from 'react';
+import { ContractContext } from '../context/ContractContext';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { useContract } from '../context/ContractContext';
-import { toast } from 'sonner';
+import ConnectWallet from '../components/ConnectWallet';
+import ElectionCard from '../components/ElectionCard';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Elections = () => {
-  const navigate = useNavigate();
-  const { contract, account } = useContract();
+  const { account, contract, getElections, castVote } = useContext(ContractContext);
   const [elections, setElections] = useState([]);
-  const [filteredElections, setFilteredElections] = useState([]);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedElection, setSelectedElection] = useState(null);
+  const [selectedCandidate, setSelectedCandidate] = useState('');
+  const [isVoting, setIsVoting] = useState(false);
+  const [showVoteModal, setShowVoteModal] = useState(false);
 
   useEffect(() => {
-    const checkAccess = async () => {
-      if (!account) {
-        toast.error('Please connect your wallet to view elections');
-        navigate('/');
-        return;
-      }
-
+    if (contract) {
       fetchElections();
-    };
-
-    checkAccess();
-  }, [contract, account, navigate]);
+    }
+  }, [contract]);
 
   const fetchElections = async () => {
     try {
-      setIsLoading(true);
-      // Mock elections data
-      const mockElections = [
-        {
-          id: '1',
-          title: 'Student Council Election',
-          description: 'Vote for your student council representatives',
-          status: 'active',
-          totalVotes: 150
-        },
-        {
-          id: '2',
-          title: 'Class President Election',
-          description: 'Choose your class president for the academic year',
-          status: 'upcoming',
-          totalVotes: 0
-        },
-        {
-          id: '3',
-          title: 'Department Head Election',
-          description: 'Select the new department head',
-          status: 'ended',
-          totalVotes: 200
-        }
-      ];
-      
-      setElections(mockElections);
-      setFilteredElections(mockElections);
+      setLoading(true);
+      setError(null);
+      const activeElections = await getElections();
+      setElections(activeElections);
     } catch (error) {
-      console.error('Mock error fetching elections:', error);
-      toast.error('Failed to fetch elections');
+      console.error('Error fetching elections:', error);
+      setError('Failed to load elections. Please try again later.');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleStatusFilter = (e) => {
-    const status = e.target.value;
-    setStatusFilter(status);
-    
-    if (status === 'all') {
-      setFilteredElections(elections);
-    } else {
-      const filtered = elections.filter(election => 
-        election.status.toLowerCase() === status.toLowerCase()
-      );
-      setFilteredElections(filtered);
+  const handleVoteClick = (election) => {
+    if (!account) {
+      setError('Please connect your wallet to vote.');
+      return;
+    }
+    setSelectedElection(election);
+    setSelectedCandidate('');
+    setShowVoteModal(true);
+  };
+
+  const handleVoteSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedCandidate) {
+      setError('Please select a candidate.');
+      return;
+    }
+
+    try {
+      setIsVoting(true);
+      setError(null);
+      await castVote(selectedElection.id, selectedCandidate);
+      setShowVoteModal(false);
+      fetchElections(); // Refresh elections after voting
+    } catch (error) {
+      setError(error.message || 'Failed to cast vote. Please try again.');
+    } finally {
+      setIsVoting(false);
     }
   };
 
-  const handleVote = (electionId) => {
-    navigate(`/voting/${electionId}`);
-  };
+  const VoteModal = () => (
+    <AnimatePresence>
+      {showVoteModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="vote-modal" role="dialog" aria-modal="true">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setShowVoteModal(false)}></div>
 
-  const handleViewResults = (electionId) => {
-    navigate(`/results/${electionId}`);
-  };
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6"
+            >
+              <div className="absolute top-0 right-0 pt-4 pr-4">
+                <button
+                  type="button"
+                  onClick={() => setShowVoteModal(false)}
+                  className="text-gray-400 hover:text-gray-500"
+                  aria-label="Close vote modal"
+                >
+                  <span className="sr-only">Close</span>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
 
-  if (isLoading) {
+              <div className="sm:flex sm:items-start">
+                <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                    Cast Your Vote
+                  </h3>
+                  <form onSubmit={handleVoteSubmit}>
+                    <div className="mb-4">
+                      <label htmlFor="candidate" className="block text-sm font-medium text-gray-700 mb-2">
+                        Select Candidate
+                      </label>
+                      <select
+                        id="candidate"
+                        value={selectedCandidate}
+                        onChange={(e) => setSelectedCandidate(e.target.value)}
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        required
+                      >
+                        <option value="">Choose a candidate...</option>
+                        {selectedElection?.candidates.map((candidate, index) => (
+                          <option key={index} value={candidate.id}>
+                            {candidate.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {error && (
+                      <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                        <p className="text-sm text-red-600">{error}</p>
+                      </div>
+                    )}
+
+                    <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                      <button
+                        type="submit"
+                        disabled={isVoting}
+                        className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
+                      >
+                        {isVoting ? 'Casting Vote...' : 'Confirm Vote'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowVoteModal(false)}
+                        className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:w-auto sm:text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+
+  if (loading) {
     return (
-      <div className="font-['Inter'] bg-gray-50 min-h-screen">
+      <div className="min-h-screen bg-gray-50">
         <Header />
-        <main className="pt-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="text-center">Loading...</div>
+        <main className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
         </main>
         <Footer />
@@ -102,73 +164,43 @@ const Elections = () => {
   }
 
   return (
-    <div className="font-['Inter'] bg-gray-50 min-h-screen">
+    <div className="min-h-screen bg-gray-50">
       <Header />
-      <main className="pt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">Elections</h1>
-            <div className="flex space-x-4">
-              <select
-                className="rounded-lg border-gray-300 text-sm"
-                value={statusFilter}
-                onChange={handleStatusFilter}
-              >
-                <option value="all">All Elections</option>
-                <option value="active">Active</option>
-                <option value="upcoming">Upcoming</option>
-                <option value="ended">Ended</option>
-              </select>
-            </div>
+      <main className="container mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Active Elections</h1>
+          {!account && <ConnectWallet />}
+        </div>
+
+        {error && !showVoteModal && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-sm text-red-600">{error}</p>
           </div>
+        )}
+
+        {elections.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i className="fas fa-box-ballot text-gray-400 text-2xl"></i>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Active Elections</h3>
+            <p className="text-gray-500">There are no elections available at the moment.</p>
+          </div>
+        ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredElections.map((election) => (
-              <div key={election.id} className="border rounded-lg p-6 bg-white shadow-sm">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-900">{election.title}</h3>
-                    <p className="text-sm text-gray-500 mt-1">{election.description}</p>
-                  </div>
-                  <span className={`px-3 py-1 text-sm font-medium rounded-full ${
-                    election.status === 'active' ? 'bg-green-100 text-green-800' :
-                    election.status === 'upcoming' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {election.status}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <div className="text-sm text-gray-500">
-                    {election.status === 'ended' ? `Final Votes: ${election.totalVotes}` : `Total Votes: ${election.totalVotes}`}
-                  </div>
-                  {election.status === 'active' ? (
-                    <button
-                      onClick={() => handleVote(election.id)}
-                      className="bg-custom text-white px-4 py-2 rounded-button text-sm font-medium hover:bg-custom/90"
-                    >
-                      Vote Now
-                    </button>
-                  ) : election.status === 'upcoming' ? (
-                    <button
-                      className="bg-gray-100 text-gray-500 px-4 py-2 rounded-button text-sm font-medium"
-                      disabled
-                    >
-                      Coming Soon
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleViewResults(election.id)}
-                      className="bg-gray-100 text-gray-700 px-4 py-2 rounded-button text-sm font-medium hover:bg-gray-200"
-                    >
-                      View Results
-                    </button>
-                  )}
-                </div>
-              </div>
+            {elections.map((election) => (
+              <ElectionCard
+                key={election.id}
+                election={election}
+                onVoteClick={() => handleVoteClick(election)}
+              />
             ))}
           </div>
-        </div>
+        )}
+
+        <VoteModal />
       </main>
+      <Footer />
     </div>
   );
 };

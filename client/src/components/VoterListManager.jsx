@@ -1,196 +1,238 @@
-import React, { useState } from 'react';
-import * as XLSX from 'xlsx';
-import { toast } from 'sonner';
+import React, { useState, useEffect } from 'react';
+import { useContract } from '../context/ContractContext';
 
 const VoterListManager = () => {
-  const [voterList, setVoterList] = useState([]);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [verificationData, setVerificationData] = useState({
+  const { contract } = useContract();
+  const [voters, setVoters] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [newVoter, setNewVoter] = useState({
     name: '',
-    voterId: ''
+    email: '',
+    phone: '',
+    address: ''
   });
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  useEffect(() => {
+    fetchVoters();
+  }, []);
 
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File size too large. Maximum size is 5MB');
-      return;
-    }
-
-    setIsProcessing(true);
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-
-        // Validate the Excel structure
-        if (!jsonData[0] || !jsonData[0].name || !jsonData[0].voterId) {
-          toast.error('Invalid Excel format. Please ensure columns "name" and "voterId" exist.');
-          setIsProcessing(false);
-          return;
-        }
-
-        // Validate data format
-        const invalidRows = jsonData.filter(row => !row.name || !row.voterId);
-        if (invalidRows.length > 0) {
-          toast.error(`Found ${invalidRows.length} invalid rows. Please check your data.`);
-          setIsProcessing(false);
-          return;
-        }
-
-        setVoterList(jsonData);
-        toast.success('Voter list uploaded successfully!');
-        setShowUploadModal(false);
-      } catch (error) {
-        console.error('Error processing Excel file:', error);
-        toast.error('Error processing Excel file. Please try again.');
-      } finally {
-        setIsProcessing(false);
-        // Reset file input
-        e.target.value = '';
-      }
-    };
-
-    reader.onerror = () => {
-      toast.error('Error reading file. Please try again.');
-      setIsProcessing(false);
-      // Reset file input
-      e.target.value = '';
-    };
-
-    reader.readAsArrayBuffer(file);
-  };
-
-  const verifyVoter = () => {
-    const { name, voterId } = verificationData;
-    if (!name.trim() || !voterId.trim()) {
-      toast.error('Please enter both name and voter ID');
-      return;
-    }
-
-    const voter = voterList.find(
-      v => v.name.toLowerCase() === name.toLowerCase() && 
-           v.voterId.toLowerCase() === voterId.toLowerCase()
-    );
-
-    if (voter) {
-      toast.success('Voter verified successfully!');
-      // Store verification status in localStorage
-      localStorage.setItem('voterVerified', 'true');
-      localStorage.setItem('voterName', name);
-      localStorage.setItem('voterId', voterId);
-    } else {
-      toast.error('Voter not found in the list');
+  const fetchVoters = async () => {
+    try {
+      setLoading(true);
+      // TODO: Replace with actual contract call to get voters
+      const mockVoters = [
+        { id: 1, name: 'John Doe', email: 'john@example.com', phone: '1234567890', address: '0x123...', registered: true },
+        { id: 2, name: 'Jane Smith', email: 'jane@example.com', phone: '0987654321', address: '0x456...', registered: true }
+      ];
+      setVoters(mockVoters);
+    } catch (err) {
+      setError('Failed to fetch voters');
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewVoter(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleRegisterVoter = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      // TODO: Replace with actual contract call to register voter
+      console.log('Registering voter:', newVoter);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulated delay
+      
+      // Add the new voter to the list
+      setVoters(prev => [...prev, { ...newVoter, id: prev.length + 1, registered: true }]);
+      
+      // Reset form
+      setNewVoter({
+        name: '',
+        email: '',
+        phone: '',
+        address: ''
+      });
+    } catch (err) {
+      setError('Failed to register voter');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveVoter = async (voterId) => {
+    try {
+      setLoading(true);
+      // TODO: Replace with actual contract call to remove voter
+      console.log('Removing voter:', voterId);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulated delay
+      
+      setVoters(prev => prev.filter(voter => voter.id !== voterId));
+    } catch (err) {
+      setError('Failed to remove voter');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredVoters = voters.filter(voter =>
+    voter.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    voter.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    voter.phone.includes(searchTerm) ||
+    voter.address.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Voter List Management</h2>
-        <button
-          onClick={() => setShowUploadModal(true)}
-          className="bg-custom text-white px-4 py-2 rounded-button text-sm font-medium hover:bg-custom/90"
-        >
-          <i className="fas fa-upload mr-2"></i>
-          Upload Voter List
-        </button>
-      </div>
-
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold mb-4">Voter Verification</h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Full Name
-            </label>
-            <input
-              type="text"
-              value={verificationData.name}
-              onChange={(e) => setVerificationData(prev => ({ ...prev, name: e.target.value }))}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-custom focus:ring-custom"
-              placeholder="Enter full name"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Voter ID
-            </label>
-            <input
-              type="text"
-              value={verificationData.voterId}
-              onChange={(e) => setVerificationData(prev => ({ ...prev, voterId: e.target.value }))}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-custom focus:ring-custom"
-              placeholder="Enter voter ID"
-            />
-          </div>
-          <button
-            onClick={verifyVoter}
-            className="bg-custom text-white px-4 py-2 rounded-button text-sm font-medium hover:bg-custom/90 w-full"
-          >
-            Verify Voter
-          </button>
-        </div>
-      </div>
-
-      {/* Upload Modal */}
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-lg max-w-md w-full mx-4">
-            <h2 className="text-2xl font-bold mb-6">Upload Voter List</h2>
-            <div className="space-y-4">
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="voterListUpload"
-                />
-                <label
-                  htmlFor="voterListUpload"
-                  className="cursor-pointer bg-custom text-white px-4 py-2 rounded-button text-sm font-medium hover:bg-custom/90"
-                >
-                  <i className="fas fa-file-excel mr-2"></i>
-                  Select Excel File
+      <div className="bg-white shadow sm:rounded-lg">
+        <div className="px-4 py-5 sm:p-6">
+          <h3 className="text-lg font-medium leading-6 text-gray-900">Register New Voter</h3>
+          <form onSubmit={handleRegisterVoter} className="mt-5 space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                  Full Name
                 </label>
-                <p className="mt-2 text-sm text-gray-500">
-                  Supported formats: .xlsx, .xls (max 5MB)
-                </p>
-                <p className="mt-2 text-sm text-gray-500">
-                  Required columns: name, voterId
-                </p>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={newVoter.name}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={newVoter.email}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  id="phone"
+                  name="phone"
+                  value={newVoter.phone}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="address" className="block text-sm font-medium text-gray-700">
+                  Wallet Address
+                </label>
+                <input
+                  type="text"
+                  id="address"
+                  name="address"
+                  value={newVoter.address}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  required
+                />
               </div>
             </div>
-            <div className="mt-6 flex justify-end space-x-3">
+            <div className="flex justify-end">
               <button
-                onClick={() => setShowUploadModal(false)}
-                className="bg-gray-500 text-white px-4 py-2 rounded-button text-sm font-medium hover:bg-gray-600"
+                type="submit"
+                disabled={loading}
+                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
               >
-                Cancel
+                {loading ? 'Registering...' : 'Register Voter'}
               </button>
             </div>
-          </div>
+          </form>
         </div>
-      )}
+      </div>
 
-      {/* Processing Indicator */}
-      {isProcessing && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-lg text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-custom mx-auto mb-4"></div>
-            <p className="text-gray-600">Processing Excel file...</p>
+      <div className="bg-white shadow sm:rounded-lg">
+        <div className="px-4 py-5 sm:p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium leading-6 text-gray-900">Registered Voters</h3>
+            <div className="flex-1 max-w-sm ml-4">
+              <input
+                type="text"
+                placeholder="Search voters..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wallet Address</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredVoters.map((voter) => (
+                  <tr key={voter.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{voter.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{voter.email}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{voter.phone}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{voter.address}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        voter.registered ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {voter.registered ? 'Registered' : 'Unregistered'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button
+                        onClick={() => handleRemoveVoter(voter.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
