@@ -290,7 +290,6 @@ const Results = () => {
           </motion.div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 };

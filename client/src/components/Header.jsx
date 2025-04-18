@@ -4,7 +4,7 @@ import { useContract } from '../context/ContractContext';
 import ConnectWallet from './ConnectWallet';
 
 const Header = () => {
-  const { isAdminUser, account } = useContract();
+  const { isAdminUser, account, isConnected } = useContract();
   const navigate = useNavigate();
 
   return (
@@ -26,7 +26,7 @@ const Header = () => {
               >
                 Home
               </Link>
-              {account ? (
+              {isConnected && account ? (
                 <>
                   <Link
                     to="/elections"
@@ -49,14 +49,7 @@ const Header = () => {
                     </Link>
                   )}
                 </>
-              ) : (
-                <button
-                  onClick={() => navigate('/verification')}
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Login
-                </button>
-              )}
+              ) : null}
             </div>
             <div className="ml-6 flex items-center">
               <ConnectWallet />

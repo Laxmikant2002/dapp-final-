@@ -7,9 +7,9 @@ const ElectionCard = ({ election }) => {
 
   const [startTime, setStartTime] = useState(date);
   const [endTime, setEndTime] = useState(date);
-  const [pollEnded, setPollEnded] = useState();
-  const [endTimeInUnix, setUnixTime] = useState();
-  const [status, setStatus] = useState();
+  const [pollEnded, setPollEnded] = useState(false);
+  const [endTimeInUnix, setUnixTime] = useState(0);
+  const [status, setStatus] = useState('Loading');
 
   const getTime = async () => {
     try {
@@ -43,7 +43,7 @@ const ElectionCard = ({ election }) => {
 
   useEffect(() => {
     getTime();
-  }, []);
+  }, [getTime]);
 
   useEffect(() => {
     if (!endTime) return;
@@ -51,7 +51,7 @@ const ElectionCard = ({ election }) => {
       compare();
     }, 1000);
     return () => clearInterval(interval);
-  }, [endTime]);
+  }, [endTime, compare]);
 
   const getStatusColor = (status) => {
     switch (status.toLowerCase()) {
@@ -78,7 +78,7 @@ const ElectionCard = ({ election }) => {
           </Link>
         );
       case 'upcoming':
-  return (
+        return (
           <button
             disabled
             className="bg-gray-100 text-gray-500 px-4 py-2 rounded-button text-sm font-medium"
@@ -101,26 +101,32 @@ const ElectionCard = ({ election }) => {
   };
 
   return (
-    <div className="border rounded-lg p-6 bg-white shadow-sm">
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <h3 className="text-xl font-semibold text-gray-900">{election.title}</h3>
-          <p className="text-sm text-gray-500 mt-1">{election.endDate}</p>
+    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="p-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900">{election.title}</h3>
+            <p className="mt-1 text-sm text-gray-500">{election.description}</p>
+          </div>
+          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(status)}`}>
+            {status}
+          </span>
         </div>
-        <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(election.status)}`}>
-          {election.status}
-        </span>
-      </div>
-      <p className="text-gray-600 mb-4">{election.description}</p>
-      <div className="flex justify-between items-center">
-        <div className="text-sm text-gray-500">
-          {election.status.toLowerCase() === 'ended' 
-            ? `Final Votes: ${election.votesCast}`
-            : election.status.toLowerCase() === 'upcoming'
-            ? `Candidates: ${election.candidates}`
-            : `Total Votes: ${election.votesCast}`}
+        
+        <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <p className="text-gray-500">Start Time</p>
+            <p className="font-medium">{startTime}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">End Time</p>
+            <p className="font-medium">{endTime}</p>
+          </div>
         </div>
-        {getActionButton(election.status)}
+        
+        <div className="mt-6 flex justify-end">
+          {getActionButton(status)}
+        </div>
       </div>
     </div>
   );

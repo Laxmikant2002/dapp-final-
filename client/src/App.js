@@ -1,92 +1,59 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ContractProvider } from './context/ContractContext';
 import { Toaster } from 'sonner';
-import Navbar from './components/Navbar';
+import { ContractProvider } from './context/ContractContext';
+import Header from './components/Header';
 import Footer from './components/Footer';
-
-// Pages
 import Home from './pages/Home';
 import Elections from './pages/Elections';
 import Vote from './pages/Vote';
 import Results from './pages/Results';
 import VoteVerification from './pages/VoteVerification';
 import AdminDashboard from './pages/AdminDashboard';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import CandidateDetails from './pages/CandidateDetails';
+import { verifyAdminToken } from './services/adminServices';
 
-// Components
-import Header from './components/Header';
+// Protected Route component for admin routes
+const AdminRoute = ({ children }) => {
+  if (!verifyAdminToken()) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
 
 function App() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    // Check if MetaMask is installed
-    if (typeof window.ethereum === 'undefined') {
-      setError('MetaMask is not installed. Please install MetaMask to use this application.');
-      setIsLoading(false);
-      return;
-    }
-
-    // Check if we're on the correct network (Sepolia testnet)
-    const checkNetwork = async () => {
-      try {
-        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-        // Sepolia testnet chainId is '0xaa36a7'
-        if (chainId !== '0xaa36a7') {
-          setError('Please switch to Sepolia testnet to use this application.');
-        }
-      } catch (error) {
-        console.error('Error checking network:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkNetwork();
-  }, []);
-
-  if (isLoading) {
-    return (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <p>Loading application...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="error-container">
-        <h2>Error</h2>
-        <p>{error}</p>
-        {error.includes('MetaMask') && (
-          <a 
-            href="https://metamask.io/download.html" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="metamask-button"
-          >
-            Install MetaMask
-          </a>
-        )}
-      </div>
-    );
-  }
-
   return (
     <ContractProvider>
       <Router>
-        <div className="min-h-screen flex flex-col">
-          <Navbar />
-          <main className="flex-grow">
+        <div className="min-h-screen flex flex-col bg-gray-50">
+          <Header />
+          <main className="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
             <Routes>
+              {/* Public Routes */}
               <Route path="/" element={<Home />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/login" element={<Login />} />
+              
+              {/* Voter Routes */}
               <Route path="/elections" element={<Elections />} />
-              <Route path="/vote/:id" element={<Vote />} />
-              <Route path="/results" element={<Results />} />
+              <Route path="/vote/:electionId" element={<CandidateDetails />} />
+              <Route path="/results/:electionId" element={<Results />} />
               <Route path="/verify" element={<VoteVerification />} />
-              <Route path="/admin" element={<AdminDashboard />} />
+              
+              {/* Admin Routes */}
+              <Route
+                path="/admin/dashboard"
+                element={
+                  <AdminRoute>
+                    <AdminDashboard />
+                  </AdminRoute>
+                }
+              />
+              
+              {/* Fallback Route */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
           <Footer />

@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { ContractContext } from '../context/ContractContext';
 import { motion } from 'framer-motion';
 import Header from '../components/Header';
@@ -6,27 +6,63 @@ import Footer from '../components/Footer';
 import ConnectWallet from '../components/ConnectWallet';
 
 const VoteVerification = () => {
-  const { contract, isConnected, loading: contractLoading } = useContext(ContractContext);
+  const { contract, account, isConnected, loading: contractLoading } = useContext(ContractContext);
   const [txHash, setTxHash] = useState('');
   const [result, setResult] = useState(null);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState('');
+  const [loadingTx, setLoadingTx] = useState(false);
 
-  const verifyVote = async (e) => {
-    e.preventDefault();
-    if (!contract || !txHash) return;
+  useEffect(() => {
+    if (isConnected && account) {
+      getLatestVoteTransaction();
+    }
+  }, [isConnected, account]);
+
+  const getLatestVoteTransaction = async () => {
+    try {
+      setLoadingTx(true);
+      // Get the latest transactions for the connected account
+      const transactions = await window.ethereum.request({
+        method: 'eth_getTransactionsByAddress',
+        params: [account]
+      });
+
+      // Find the most recent vote transaction
+      const voteTransaction = transactions?.find(tx => 
+        tx.to?.toLowerCase() === contract?.address?.toLowerCase() && 
+        tx.input?.includes('castVote')
+      );
+
+      if (voteTransaction) {
+        setTxHash(voteTransaction.hash);
+        // Automatically verify the vote
+        verifyVote(null, voteTransaction.hash);
+      }
+    } catch (err) {
+      console.error('Error fetching transaction:', err);
+    } finally {
+      setLoadingTx(false);
+    }
+  };
+
+  const verifyVote = async (e, hash = null) => {
+    if (e) e.preventDefault();
+    if (!contract || (!txHash && !hash)) return;
 
     try {
       setVerifying(true);
       setError('');
       setResult(null);
 
+      const hashToVerify = hash || txHash;
+
       // Validate transaction hash format
-      if (!txHash.match(/^0x([A-Fa-f0-9]{64})$/)) {
+      if (!hashToVerify.match(/^0x([A-Fa-f0-9]{64})$/)) {
         throw new Error('Invalid transaction hash format');
       }
 
-      const voteData = await contract.verifyVote(txHash);
+      const voteData = await contract.verifyVote(hashToVerify);
       
       if (!voteData) {
         throw new Error('No vote found for this transaction');
@@ -57,7 +93,7 @@ const VoteVerification = () => {
         >
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Verify Your Vote</h1>
-            <p className="text-gray-600">Enter your transaction hash to verify your vote on the blockchain</p>
+            <p className="text-gray-600">Connect your wallet or enter your transaction hash to verify your vote on the blockchain</p>
           </div>
 
           {!isConnected && (
@@ -98,36 +134,39 @@ const VoteVerification = () => {
                     type="text"
                     value={txHash}
                     onChange={(e) => setTxHash(e.target.value)}
-                    placeholder="0x..."
+                    placeholder={loadingTx ? "Loading transaction..." : "0x..."}
                     className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                     aria-label="Enter transaction hash"
                     aria-describedby="txHash-description"
                     required
                     pattern="^0x[a-fA-F0-9]{64}$"
+                    disabled={loadingTx}
                   />
                 </div>
                 <p className="mt-2 text-sm text-gray-500" id="txHash-description">
-                  Enter the transaction hash you received after casting your vote
+                  {isConnected 
+                    ? "Transaction hash will be automatically filled when you connect your wallet" 
+                    : "Enter the transaction hash you received after casting your vote"}
                 </p>
               </div>
 
               <button
                 type="submit"
-                disabled={verifying || !txHash || !isConnected || contractLoading}
+                disabled={verifying || !txHash || !isConnected || contractLoading || loadingTx}
                 className={`w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white transition-colors duration-200
-                  ${verifying || !txHash || !isConnected || contractLoading
+                  ${verifying || !txHash || !isConnected || contractLoading || loadingTx
                     ? 'bg-gray-400 cursor-not-allowed' 
                     : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
                   }`}
                 aria-label="Verify vote"
               >
-                {verifying ? (
+                {verifying || loadingTx ? (
                   <>
                     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Verifying...
+                    {loadingTx ? 'Loading Transaction...' : 'Verifying...'}
                   </>
                 ) : (
                   'Verify Vote'
@@ -199,14 +238,11 @@ const VoteVerification = () => {
                 <li>The email confirmation sent to your registered email address</li>
                 <li>Your voting receipt if you downloaded one</li>
               </ul>
-              <p>
-                If you cannot find your transaction hash, please contact support for assistance.
-              </p>
             </div>
           </div>
         </motion.div>
       </main>
-      <Footer />
+      {/* <Footer /> */}
     </div>
   );
 };

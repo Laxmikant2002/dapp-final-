@@ -3,20 +3,23 @@ import { ContractContext } from '../context/ContractContext';
 import { toast } from 'sonner';
 
 const ConnectWallet = () => {
-  const { account, connectWallet, isLoading } = useContext(ContractContext);
+  const { account, connectWallet, disconnectWallet, isLoading, isConnected } = useContext(ContractContext);
   const [connecting, setConnecting] = useState(false);
 
   const handleConnect = async () => {
     try {
       setConnecting(true);
       await connectWallet();
-      toast.success('Wallet connected successfully!');
     } catch (error) {
       console.error('Error connecting wallet:', error);
       toast.error('Failed to connect wallet. Please try again.');
     } finally {
       setConnecting(false);
     }
+  };
+
+  const handleDisconnect = () => {
+    disconnectWallet();
   };
 
   const formatAddress = (address) => {
@@ -26,16 +29,19 @@ const ConnectWallet = () => {
 
   return (
     <div>
-      {account ? (
-        <div className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-indigo-700 bg-indigo-100">
+      {isConnected && account ? (
+        <button
+          onClick={handleDisconnect}
+          className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 transition-colors"
+        >
           <span className="h-2 w-2 rounded-full bg-green-500 mr-2"></span>
           {formatAddress(account)}
-        </div>
+        </button>
       ) : (
         <button
           onClick={handleConnect}
           disabled={connecting || isLoading}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+          className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors"
         >
           {connecting || isLoading ? (
             <>
