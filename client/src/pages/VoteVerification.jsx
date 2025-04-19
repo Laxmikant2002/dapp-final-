@@ -1,8 +1,7 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useCallback } from 'react';
 import { ContractContext } from '../context/ContractContext';
 import { motion } from 'framer-motion';
 import Header from '../components/Header';
-import Footer from '../components/Footer';
 import ConnectWallet from '../components/ConnectWallet';
 
 const VoteVerification = () => {
@@ -13,40 +12,7 @@ const VoteVerification = () => {
   const [error, setError] = useState('');
   const [loadingTx, setLoadingTx] = useState(false);
 
-  useEffect(() => {
-    if (isConnected && account) {
-      getLatestVoteTransaction();
-    }
-  }, [isConnected, account]);
-
-  const getLatestVoteTransaction = async () => {
-    try {
-      setLoadingTx(true);
-      // Get the latest transactions for the connected account
-      const transactions = await window.ethereum.request({
-        method: 'eth_getTransactionsByAddress',
-        params: [account]
-      });
-
-      // Find the most recent vote transaction
-      const voteTransaction = transactions?.find(tx => 
-        tx.to?.toLowerCase() === contract?.address?.toLowerCase() && 
-        tx.input?.includes('castVote')
-      );
-
-      if (voteTransaction) {
-        setTxHash(voteTransaction.hash);
-        // Automatically verify the vote
-        verifyVote(null, voteTransaction.hash);
-      }
-    } catch (err) {
-      console.error('Error fetching transaction:', err);
-    } finally {
-      setLoadingTx(false);
-    }
-  };
-
-  const verifyVote = async (e, hash = null) => {
+  const verifyVote = useCallback(async (e, hash = null) => {
     if (e) e.preventDefault();
     if (!contract || (!txHash && !hash)) return;
 
@@ -79,7 +45,40 @@ const VoteVerification = () => {
     } finally {
       setVerifying(false);
     }
-  };
+  }, [contract, txHash]);
+
+  const getLatestVoteTransaction = useCallback(async () => {
+    try {
+      setLoadingTx(true);
+      // Get the latest transactions for the connected account
+      const transactions = await window.ethereum.request({
+        method: 'eth_getTransactionsByAddress',
+        params: [account]
+      });
+
+      // Find the most recent vote transaction
+      const voteTransaction = transactions?.find(tx => 
+        tx.to?.toLowerCase() === contract?.address?.toLowerCase() && 
+        tx.input?.includes('castVote')
+      );
+
+      if (voteTransaction) {
+        setTxHash(voteTransaction.hash);
+        // Automatically verify the vote
+        verifyVote(null, voteTransaction.hash);
+      }
+    } catch (err) {
+      console.error('Error fetching transaction:', err);
+    } finally {
+      setLoadingTx(false);
+    }
+  }, [account, contract, verifyVote]);
+
+  useEffect(() => {
+    if (isConnected && account) {
+      getLatestVoteTransaction();
+    }
+  }, [isConnected, account, getLatestVoteTransaction]);
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -242,7 +241,6 @@ const VoteVerification = () => {
           </div>
         </motion.div>
       </main>
-      {/* <Footer /> */}
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ContractContext } from '../context/ContractContext';
 import Header from '../components/Header';
@@ -8,12 +8,10 @@ import VoteFeedback from '../components/VoteFeedback';
 
 const CandidateDetails = () => {
   const { electionId } = useParams();
-  const navigate = useNavigate();
-  const { isConnected, contract } = useContext(ContractContext);
+  const { isConnected } = useContext(ContractContext);
   const [loading, setLoading] = useState(true);
   const [voting, setVoting] = useState(false);
   const [election, setElection] = useState(null);
-  const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
 
   // Mock data for demonstration - replace with actual contract calls
@@ -153,11 +151,7 @@ const CandidateDetails = () => {
           {election.candidates.map((candidate) => (
             <div
               key={candidate.id}
-              className={`bg-white rounded-lg shadow-sm overflow-hidden border-2 transition-colors ${
-                selectedCandidate === candidate.id
-                  ? 'border-indigo-500'
-                  : 'border-transparent hover:border-gray-200'
-              }`}
+              className={`bg-white rounded-lg shadow-sm overflow-hidden border-2 transition-colors`}
             >
               <div className="relative">
                 <img

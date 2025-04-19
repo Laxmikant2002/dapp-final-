@@ -1,50 +1,38 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useContract } from '../hooks/useContract';
-import { toast } from 'sonner';
+import { toast } from 'react-hot-toast';
+import { FaUserCircle, FaCheckCircle } from 'react-icons/fa';
+import { getElectionById, getCandidates } from '../services/firebaseService';
+import { useContract } from '../context/ContractContext';
 
 const Vote = () => {
-  const { id } = useParams();
+  const { electionId } = useParams();
   const navigate = useNavigate();
-  const { contract, account } = useContract();
+  const { contract } = useContract();
   const [election, setElection] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [candidates, setCandidates] = useState([]);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
-  const [hasVoted, setHasVoted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [voting, setVoting] = useState(false);
 
   useEffect(() => {
-    const fetchElectionDetails = async () => {
-      try {
-        if (!contract || !id) return;
+    fetchElectionData();
+  }, [electionId]);
 
-        const electionDetails = await contract.getElection(id);
-        const candidates = await contract.getCandidates(id);
-        const hasUserVoted = await contract.hasVoted(id, account);
-
-        setElection({
-          id,
-          title: electionDetails.title,
-          description: electionDetails.description,
-          startTime: new Date(electionDetails.startTime * 1000),
-          endTime: new Date(electionDetails.endTime * 1000),
-          candidates: candidates.map((c, index) => ({
-            id: index,
-            name: c.name,
-            description: c.description
-          }))
-        });
-        setHasVoted(hasUserVoted);
-      } catch (err) {
-        console.error('Error fetching election details:', err);
-        setError('Failed to load election details');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchElectionDetails();
-  }, [contract, id, account]);
+  const fetchElectionData = async () => {
+    try {
+      const electionData = await getElectionById(electionId);
+      const candidatesData = await getCandidates(electionId);
+      setElection(electionData);
+      setCandidates(candidatesData);
+    } catch (error) {
+      console.error('Error fetching election data:', error);
+      toast.error('Failed to load election data');
+      navigate('/elections');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleVote = async () => {
     if (!selectedCandidate) {
@@ -52,34 +40,31 @@ const Vote = () => {
       return;
     }
 
+    if (!contract) {
+      toast.error('Please connect your wallet');
+      return;
+    }
+
+    setVoting(true);
     try {
-      setLoading(true);
-      const tx = await contract.vote(id, selectedCandidate);
+      const tx = await contract.castVote(electionId, selectedCandidate.id);
       await tx.wait();
       toast.success('Vote cast successfully!');
-      navigate('/results');
-    } catch (err) {
-      console.error('Error casting vote:', err);
-      toast.error('Failed to cast vote. Please try again.');
+      navigate(`/results/${electionId}`);
+    } catch (error) {
+      console.error('Error casting vote:', error);
+      toast.error(error.message || 'Failed to cast vote');
     } finally {
-      setLoading(false);
+      setVoting(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-red-500 text-center">
-          <h2 className="text-2xl font-bold mb-4">Error</h2>
-          <p>{error}</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading election details...</p>
         </div>
       </div>
     );
@@ -87,104 +72,95 @@ const Vote = () => {
 
   if (!election) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-500 text-center">
-          <h2 className="text-2xl font-bold mb-4">Election Not Found</h2>
-          <p>The election you're looking for doesn't exist or has been removed.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (hasVoted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Already Voted</h2>
-          <p className="mb-4">You have already cast your vote in this election.</p>
-          <button
-            onClick={() => navigate('/results')}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-          >
-            View Results
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const now = new Date();
-  if (now < election.startTime) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Election Not Started</h2>
-          <p className="mb-4">This election will start on {election.startTime.toLocaleString()}</p>
-          <button
-            onClick={() => navigate('/elections')}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-          >
-            Back to Elections
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (now > election.endTime) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Election Ended</h2>
-          <p className="mb-4">This election has ended. You can view the results.</p>
-          <button
-            onClick={() => navigate('/results')}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-          >
-            View Results
-          </button>
+          <p className="text-gray-600">Election not found</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
-        <div className="bg-white shadow rounded-lg p-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">{election.title}</h1>
-          <p className="text-gray-600 mb-8">{election.description}</p>
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-12">
+          <h1 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
+            {election.name}
+          </h1>
+          <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 sm:mt-4">
+            {election.description}
+          </p>
+        </div>
 
-          <div className="space-y-4">
-            {election.candidates.map((candidate) => (
-              <div
-                key={candidate.id}
-                className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                  selectedCandidate === candidate.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-blue-300'
-                }`}
-                onClick={() => setSelectedCandidate(candidate.id)}
-              >
-                <h3 className="text-xl font-semibold text-gray-900">{candidate.name}</h3>
-                <p className="text-gray-600">{candidate.description}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-8 flex justify-end">
-            <button
-              onClick={handleVote}
-              disabled={!selectedCandidate || loading}
-              className={`px-6 py-3 rounded-lg font-semibold text-white ${
-                !selectedCandidate || loading
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-blue-500 hover:bg-blue-600'
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {candidates.map((candidate) => (
+            <div
+              key={candidate.id}
+              onClick={() => setSelectedCandidate(candidate)}
+              className={`relative bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer overflow-hidden ${
+                selectedCandidate?.id === candidate.id ? 'ring-2 ring-indigo-500' : ''
               }`}
             >
-              {loading ? 'Casting Vote...' : 'Cast Vote'}
-            </button>
-          </div>
+              <div className="p-6">
+                {/* Candidate Image */}
+                <div className="mb-4">
+                  {candidate.imageUrl ? (
+                    <img
+                      src={candidate.imageUrl}
+                      alt={candidate.name}
+                      className="w-32 h-32 mx-auto rounded-full object-cover"
+                    />
+                  ) : (
+                    <FaUserCircle className="w-32 h-32 mx-auto text-gray-300" />
+                  )}
+                </div>
+
+                {/* Candidate Info */}
+                <div className="text-center">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    {candidate.name}
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">{candidate.party}</p>
+                </div>
+
+                {/* Party Symbol */}
+                {candidate.partySymbol && (
+                  <div className="mt-4">
+                    <img
+                      src={candidate.partySymbol}
+                      alt={`${candidate.party} symbol`}
+                      className="h-12 w-12 mx-auto object-contain"
+                    />
+                  </div>
+                )}
+
+                {/* Description */}
+                <p className="mt-4 text-sm text-gray-600">
+                  {candidate.description}
+                </p>
+
+                {/* Selection Indicator */}
+                {selectedCandidate?.id === candidate.id && (
+                  <div className="absolute top-2 right-2">
+                    <FaCheckCircle className="w-6 h-6 text-indigo-500" />
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Vote Button */}
+        <div className="mt-8 flex justify-center">
+          <button
+            onClick={handleVote}
+            disabled={!selectedCandidate || voting}
+            className={`inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
+              (!selectedCandidate || voting) ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            {voting ? 'Casting Vote...' : 'Cast Vote'}
+          </button>
         </div>
       </div>
     </div>

@@ -1,178 +1,12 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import { ethers } from 'ethers';
-import detectEthereumProvider from '@metamask/detect-provider';
 import { toast } from 'react-hot-toast';
-import VoteABI from '../contracts/Vote.json';
+import Vote from '../contracts/Vote.json';
 import contractAddress from '../contracts/contract-address.json';
 
 const ContractContext = createContext();
 
 export { ContractContext };
-
-export const ContractProvider = ({ children }) => {
-  const [account, setAccount] = useState(null);
-  const [contract, setContract] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [provider, setProvider] = useState(null);
-  const [isConnected, setIsConnected] = useState(false);
-
-  useEffect(() => {
-    checkIfWalletIsConnected();
-  }, []);
-
-  const checkIfWalletIsConnected = async () => {
-    try {
-      const provider = await detectEthereumProvider();
-      
-      if (provider) {
-        const accounts = await provider.request({ method: 'eth_accounts' });
-        if (accounts.length > 0) {
-          setAccount(accounts[0]);
-          setIsConnected(true);
-          setupEventListeners();
-          initializeContract();
-        }
-      }
-    } catch (error) {
-      console.error('Error checking wallet connection:', error);
-    }
-  };
-
-  const setupEventListeners = () => {
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
-      window.ethereum.on('chainChanged', () => window.location.reload());
-    }
-  };
-
-  const handleAccountsChanged = (accounts) => {
-    if (accounts.length > 0) {
-      setAccount(accounts[0]);
-      setIsConnected(true);
-      initializeContract();
-    } else {
-      setAccount(null);
-      setIsConnected(false);
-      setContract(null);
-    }
-  };
-
-  const initializeContract = async () => {
-    try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
-      const voteContract = new ethers.Contract(
-        contractAddress.Vote,
-        VoteABI.abi,
-        signer
-      );
-      setContract(voteContract);
-      setProvider(provider);
-
-      // Check if connected account is admin
-      const owner = await voteContract.owner();
-      setIsAdmin(owner.toLowerCase() === account.toLowerCase());
-    } catch (error) {
-      console.error('Error initializing contract:', error);
-      toast.error('Failed to initialize contract');
-    }
-  };
-
-  const connectWallet = async () => {
-    try {
-      setIsLoading(true);
-      const provider = await detectEthereumProvider();
-      
-      if (!provider) {
-        toast.error('Please install MetaMask!');
-        return;
-      }
-
-      const accounts = await provider.request({
-        method: 'eth_requestAccounts'
-      });
-
-      if (accounts.length > 0) {
-        setAccount(accounts[0]);
-        setIsConnected(true);
-        setupEventListeners();
-        await initializeContract();
-        toast.success('Wallet connected successfully!');
-      }
-    } catch (error) {
-      console.error('Error connecting wallet:', error);
-      toast.error('Failed to connect wallet');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const disconnectWallet = () => {
-    setAccount(null);
-    setIsConnected(false);
-    setIsAdmin(false);
-    setContract(null);
-    toast.success('Wallet disconnected');
-  };
-
-  // Contract interaction functions
-  const getElections = async () => {
-    try {
-      if (!contract) throw new Error('Contract not initialized');
-      const elections = await contract.candidateList();
-      return elections;
-    } catch (error) {
-      console.error('Error getting elections:', error);
-      toast.error('Failed to fetch elections');
-      return [];
-    }
-  };
-
-  const castVote = async (voterId, candidateId) => {
-    try {
-      if (!contract) throw new Error('Contract not initialized');
-      const tx = await contract.vote(voterId, candidateId);
-      await tx.wait();
-      toast.success('Vote cast successfully!');
-      return true;
-    } catch (error) {
-      console.error('Error casting vote:', error);
-      toast.error(error.message || 'Failed to cast vote');
-      return false;
-    }
-  };
-
-  const getElectionResults = async () => {
-    try {
-      if (!contract) throw new Error('Contract not initialized');
-      const results = await contract.result();
-      return results;
-    } catch (error) {
-      console.error('Error getting election results:', error);
-      toast.error('Failed to fetch election results');
-      return [];
-    }
-  };
-
-  return (
-    <ContractContext.Provider value={{ 
-      account, 
-      contract, 
-      isLoading,
-      isConnected,
-      connectWallet,
-      disconnectWallet,
-      isAdmin,
-      provider,
-      getElections,
-      castVote,
-      getElectionResults
-    }}>
-      {children}
-    </ContractContext.Provider>
-  );
-};
 
 export const useContract = () => {
   const context = useContext(ContractContext);
@@ -181,3 +15,139 @@ export const useContract = () => {
   }
   return context;
 };
+
+export const ContractProvider = ({ children }) => {
+  const [provider, setProvider] = useState(null);
+  const [signer, setSigner] = useState(null);
+  const [contract, setContract] = useState(null);
+  const [account, setAccount] = useState('');
+  const [isConnected, setIsConnected] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [networkError, setNetworkError] = useState(null);
+
+  // Initialize provider
+  useEffect(() => {
+    const init = async () => {
+      try {
+        if (typeof window.ethereum !== 'undefined') {
+          // Request account access if needed
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+          
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          setProvider(provider);
+
+          // Listen for network changes
+          window.ethereum.on('chainChanged', (chainId) => {
+            window.location.reload();
+          });
+
+          // Listen for account changes
+          window.ethereum.on('accountsChanged', (accounts) => {
+            if (accounts.length === 0) {
+              disconnectWallet();
+            } else {
+              setAccount(accounts[0]);
+            }
+          });
+
+          // Check if already connected
+          const accounts = await provider.listAccounts();
+          if (accounts.length > 0) {
+            setAccount(accounts[0]);
+            const signer = provider.getSigner();
+            setSigner(signer);
+            setIsConnected(true);
+          }
+        } else {
+          setNetworkError('Please install MetaMask to use this application');
+        }
+      } catch (error) {
+        console.error('Provider initialization error:', error);
+        setNetworkError('Failed to initialize Web3 provider');
+      }
+    };
+
+    init();
+
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeAllListeners();
+      }
+    };
+  }, []);
+
+  const connectWallet = async () => {
+    try {
+      setIsLoading(true);
+      setNetworkError(null);
+
+      if (!window.ethereum) {
+        throw new Error('Please install MetaMask to use this application');
+      }
+
+      // Request account access
+      const accounts = await window.ethereum.request({ 
+        method: 'eth_requestAccounts' 
+      });
+      
+      const account = accounts[0];
+      setAccount(account);
+
+      // Get signer
+      const signer = provider.getSigner();
+      setSigner(signer);
+
+      // Initialize contract
+      const contract = new ethers.Contract(
+        contractAddress.Vote,
+        Vote.abi,
+        signer
+      );
+      setContract(contract);
+
+      // Verify network
+      const network = await provider.getNetwork();
+      if (network.chainId !== 31337) { // Hardhat network
+        throw new Error('Please connect to the Hardhat network');
+      }
+
+      setIsConnected(true);
+      toast.success('Wallet connected successfully');
+    } catch (error) {
+      console.error('Connection error:', error);
+      setNetworkError(error.message);
+      toast.error(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const disconnectWallet = async () => {
+    setAccount('');
+    setSigner(null);
+    setContract(null);
+    setIsConnected(false);
+    setNetworkError(null);
+    toast.success('Wallet disconnected');
+  };
+
+  return (
+    <ContractContext.Provider
+      value={{
+        provider,
+        signer,
+        contract,
+        account,
+        isConnected,
+        isLoading,
+        networkError,
+        connectWallet,
+        disconnectWallet
+      }}
+    >
+      {children}
+    </ContractContext.Provider>
+  );
+};
+
+export default ContractContext;

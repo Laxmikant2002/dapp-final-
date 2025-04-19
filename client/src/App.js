@@ -1,12 +1,11 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { ContractProvider } from './context/ContractContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Home from './pages/Home';
 import Elections from './pages/Elections';
-import Vote from './pages/Vote';
 import Results from './pages/Results';
 import VoteVerification from './pages/VoteVerification';
 import AdminDashboard from './pages/AdminDashboard';
@@ -14,6 +13,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import CandidateDetails from './pages/CandidateDetails';
 import { verifyAdminToken } from './services/adminServices';
+import { setupAdminAccount } from './services/firebaseService';
 
 // Protected Route component for admin routes
 const AdminRoute = ({ children }) => {
@@ -24,9 +24,14 @@ const AdminRoute = ({ children }) => {
 };
 
 function App() {
+  useEffect(() => {
+    // Initialize admin account
+    setupAdminAccount().catch(console.error);
+  }, []);
+
   return (
     <ContractProvider>
-      <Router>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <div className="min-h-screen flex flex-col bg-gray-50">
           <Header />
           <main className="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -59,7 +64,7 @@ function App() {
           <Footer />
           <Toaster position="top-right" />
         </div>
-      </Router>
+      </BrowserRouter>
     </ContractProvider>
   );
 }

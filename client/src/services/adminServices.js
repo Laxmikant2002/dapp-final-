@@ -1,3 +1,6 @@
+import { auth, db } from '../config/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+
 // List of authorized admin emails
 const AUTHORIZED_ADMINS = [
   'admin@voting.com',
@@ -33,15 +36,26 @@ export const adminLogin = async (email, password) => {
   };
 };
 
-export const verifyAdminToken = () => {
-  // In a real application, this would verify the JWT token
-  // For demo purposes, we're just checking if the token exists
-  const token = localStorage.getItem('adminToken');
-  const adminEmail = localStorage.getItem('adminEmail');
-  
-  if (!token || !adminEmail) {
+export const verifyAdminToken = async () => {
+  try {
+    const token = localStorage.getItem('adminToken');
+    const currentUser = auth.currentUser;
+
+    if (!token || !currentUser) {
+      return false;
+    }
+
+    // Verify token format
+    const [prefix, uid] = token.split('-');
+    if (prefix !== 'admin' || uid !== currentUser.uid) {
+      return false;
+    }
+
+    // Verify admin status in Firestore
+    const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+    return userDoc.exists() && userDoc.data().isAdmin === true;
+  } catch (error) {
+    console.error('Admin verification error:', error);
     return false;
   }
-
-  return isAuthorizedAdmin(adminEmail);
 }; 

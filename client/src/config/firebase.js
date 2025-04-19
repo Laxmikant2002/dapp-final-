@@ -1,28 +1,42 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
+import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { getAnalytics } from "firebase/analytics";
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyBoj80Wj8QgrvySEQP61lC_kagdTu9Q16Q",
-  authDomain: "voting-system-3230f.firebaseapp.com",
-  projectId: "voting-system-3230f",
-  storageBucket: "voting-system-3230f.firebasestorage.app",
-  messagingSenderId: "741171944370",
-  appId: "1:741171944370:web:c001d5ac4ba10f2c4422ab",
-  measurementId: "G-L8478YB51L"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
+
+// Connect to emulators in development
+if (process.env.NODE_ENV === 'development') {
+  try {
+    connectFirestoreEmulator(db, 'localhost', 8080);
+    connectAuthEmulator(auth, 'http://localhost:9099');
+  } catch (error) {
+    console.warn('Error connecting to emulators:', error);
+  }
+}
+
+// Initialize analytics only in production
+let analytics;
+if (process.env.NODE_ENV === 'production' && typeof window !== 'undefined') {
+  analytics = getAnalytics(app);
+}
 
 export { db, auth, storage, analytics };
 

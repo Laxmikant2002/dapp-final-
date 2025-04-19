@@ -1,11 +1,10 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useContract } from '../context/ContractContext';
 import ConnectWallet from './ConnectWallet';
 
 const Header = () => {
   const { isAdminUser, account, isConnected } = useContract();
-  const navigate = useNavigate();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200">

@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from 'react-hot-toast';
 import { FiPlus, FiTrash2, FiUpload } from 'react-icons/fi';
+import { useContract } from '../context/ContractContext';
+import { createElection, addCandidateToElection } from '../services/firebaseService';
 
 const ElectionForm = ({ onSuccess }) => {
+  const { contract } = useContract();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -16,10 +19,7 @@ const ElectionForm = ({ onSuccess }) => {
 
   const [newCandidate, setNewCandidate] = useState({
     fullName: '',
-    age: '',
-    citizenshipStatus: 'indian',
-    voterIdNumber: '',
-    aadhaarNumber: '',
+    description: '',
     partyName: '',
     candidateImage: null,
     partyImage: null,
@@ -61,28 +61,13 @@ const ElectionForm = ({ onSuccess }) => {
 
   const validateCandidate = () => {
     const errors = [];
-    const today = new Date();
-    const age = parseInt(newCandidate.age);
 
     if (!newCandidate.fullName) {
       errors.push('Full name is required');
     }
 
-    if (!newCandidate.age || isNaN(age)) {
-      errors.push('Valid age is required');
-    } else {
-      // Age validation based on election type (assuming Lok Sabha by default)
-      if (age < 25) {
-        errors.push('Minimum age requirement is 25 years for Lok Sabha elections');
-      }
-    }
-
-    if (!newCandidate.voterIdNumber || !/^[A-Z]{3}\d{7}$/.test(newCandidate.voterIdNumber)) {
-      errors.push('Valid Voter ID number is required (Format: ABC1234567)');
-    }
-
-    if (!newCandidate.aadhaarNumber || !/^\d{12}$/.test(newCandidate.aadhaarNumber)) {
-      errors.push('Valid 12-digit Aadhaar number is required');
+    if (!newCandidate.description) {
+      errors.push('Description is required');
     }
 
     if (!newCandidate.partyName) {
@@ -115,10 +100,7 @@ const ElectionForm = ({ onSuccess }) => {
     // Reset candidate form
     setNewCandidate({
       fullName: '',
-      age: '',
-      citizenshipStatus: 'indian',
-      voterIdNumber: '',
-      aadhaarNumber: '',
+      description: '',
       partyName: '',
       candidateImage: null,
       partyImage: null,
@@ -136,20 +118,102 @@ const ElectionForm = ({ onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.name || !formData.description || !formData.startDate || 
+        !formData.startTime || !formData.endDate || !formData.endTime) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    // Validate at least two candidates
     if (formData.candidates.length < 2) {
       toast.error('At least two candidates are required');
       return;
     }
 
+    // Validate dates
+    const startDateTime = new Date(`${formData.startDate} ${formData.startTime}`);
+    const endDateTime = new Date(`${formData.endDate} ${formData.endTime}`);
+    const now = new Date();
+
+    if (startDateTime < now) {
+      toast.error('Start date must be in the future');
+      return;
+    }
+
+    if (endDateTime <= startDateTime) {
+      toast.error('End date must be after start date');
+      return;
+    }
+
     setLoading(true);
     try {
-      // TODO: Add API call to create election
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!contract) {
+        throw new Error('Contract not initialized');
+      }
+
+      // Format the data for the contract
+      const startTime = Math.floor(startDateTime.getTime() / 1000);
+      const endTime = Math.floor(endDateTime.getTime() / 1000);
+
+      // Create election using contract
+      const tx = await contract.createElection(
+        formData.name,
+        formData.description,
+        startTime,
+        endTime,
+        formData.candidates.map(candidate => ({
+          name: candidate.fullName,
+          party: candidate.partyName,
+          description: candidate.description
+        }))
+      );
+
+      // Wait for transaction to be mined
+      await tx.wait();
+
+      // Save to Firebase
+      const electionData = {
+        name: formData.name,
+        description: formData.description,
+        startTime: startDateTime,
+        endTime: endDateTime,
+        status: 'active'
+      };
+
+      // Create election in Firebase
+      const savedElection = await createElection(electionData);
+
+      // Add candidates to Firebase
+      await Promise.all(formData.candidates.map(candidate => 
+        addCandidateToElection(savedElection.id, {
+          name: candidate.fullName,
+          party: candidate.partyName,
+          description: candidate.description,
+          imageUrl: candidate.candidateImagePreview,
+          partySymbol: candidate.partyImagePreview
+        })
+      ));
+      
       toast.success('Election created successfully');
+      
+      // Reset form
+      setFormData({
+        name: '',
+        description: '',
+        startDate: '',
+        startTime: '',
+        endDate: '',
+        endTime: '',
+        candidates: []
+      });
+      
+      // Notify parent component
       onSuccess?.();
     } catch (error) {
       console.error('Error creating election:', error);
-      toast.error('Failed to create election');
+      toast.error(error.message || 'Failed to create election. Please make sure you are connected to the correct network and have sufficient funds.');
     } finally {
       setLoading(false);
     }
@@ -247,12 +311,8 @@ const ElectionForm = ({ onSuccess }) => {
                     <p className="text-sm text-gray-900">{candidate.fullName}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Age:</p>
-                    <p className="text-sm text-gray-900">{candidate.age} years</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">Voter ID:</p>
-                    <p className="text-sm text-gray-900">{candidate.voterIdNumber}</p>
+                    <p className="text-sm font-medium text-gray-700">Description:</p>
+                    <p className="text-sm text-gray-900">{candidate.description}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-700">Party:</p>
@@ -290,7 +350,7 @@ const ElectionForm = ({ onSuccess }) => {
             <h4 className="text-md font-medium text-gray-900 mb-4">Add New Candidate</h4>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Full Name (as per Aadhaar/Voter ID)</label>
+                <label className="block text-sm font-medium text-gray-700">Full Name</label>
                 <input
                   type="text"
                   name="fullName"
@@ -300,51 +360,14 @@ const ElectionForm = ({ onSuccess }) => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Age</label>
-                <input
-                  type="number"
-                  name="age"
-                  min="25"
-                  value={newCandidate.age}
+                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <textarea
+                  name="description"
+                  value={newCandidate.description}
                   onChange={handleCandidateChange}
+                  rows="3"
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-                <p className="mt-1 text-xs text-gray-500">Minimum age: 25 years for Lok Sabha</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Citizenship Status</label>
-                <select
-                  name="citizenshipStatus"
-                  value={newCandidate.citizenshipStatus}
-                  onChange={handleCandidateChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                >
-                  <option value="indian">Indian Citizen</option>
-                  <option value="other" disabled>Non-Indian Citizen</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Voter ID Number</label>
-                <input
-                  type="text"
-                  name="voterIdNumber"
-                  value={newCandidate.voterIdNumber}
-                  onChange={handleCandidateChange}
-                  pattern="[A-Z]{3}[0-9]{7}"
-                  placeholder="ABC1234567"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Aadhaar Number</label>
-                <input
-                  type="text"
-                  name="aadhaarNumber"
-                  value={newCandidate.aadhaarNumber}
-                  onChange={handleCandidateChange}
-                  pattern="\d{12}"
-                  placeholder="123456789012"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  placeholder="Enter candidate's background, experience, and key points..."
                 />
               </div>
               <div>
