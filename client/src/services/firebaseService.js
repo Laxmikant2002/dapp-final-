@@ -23,7 +23,7 @@ import { db, auth } from '../config/firebase';
 // Connect to emulators in development
 if (process.env.NODE_ENV === 'development') {
   try {
-    connectFirestoreEmulator(db, 'localhost', 8080);
+    connectFirestoreEmulator(db, 'localhost', 8081);
     connectAuthEmulator(auth, 'http://localhost:9099');
   } catch (error) {
     console.warn('Error connecting to emulators:', error);
@@ -329,46 +329,39 @@ export const getVoterElections = async (ethAddress) => {
 // Admin Management
 export const verifyAdminCredentials = async (email, password) => {
   try {
-    if (!auth) {
-      throw new Error('Firebase Auth is not initialized');
-    }
-
-    console.log('Verifying admin credentials for:', email);
-    
-    // Sign in with Firebase Auth
+    // Try to sign in with admin credentials
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    console.log('Firebase Auth successful');
-
-    if (!db) {
-      throw new Error('Firestore is not initialized');
+    const user = userCredential.user;
+    
+    // Check if user exists in Firestore and is an admin
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (!userDoc.exists() || !userDoc.data().isAdmin) {
+      throw new Error('User is not an admin');
     }
-
-    // Get user document from Firestore
-    const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
-    console.log('User document retrieved:', userDoc.exists());
-
-    if (!userDoc.exists()) {
-      throw new Error('User data not found');
-    }
-
-    const userData = userDoc.data();
-    console.log('User data:', userData);
-
-    if (!userData.isAdmin) {
-      throw new Error('Not authorized as admin');
-    }
-
-    return {
-      uid: userCredential.user.uid,
-      email: userCredential.user.email,
-      ...userData
-    };
+    
+    return true;
   } catch (error) {
-    console.error('Admin verification error:', error);
-    if (error.code === 'auth/configuration-not-found') {
-      throw new Error('Firebase Authentication is not properly configured. Please check your Firebase setup.');
+    if (error.code === 'auth/user-not-found') {
+      // Admin doesn't exist, create it
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        // Create admin user document
+        await setDoc(doc(db, 'users', user.uid), {
+          email,
+          isAdmin: true,
+          createdAt: serverTimestamp()
+        });
+        
+        return true;
+      } catch (createError) {
+        console.error('Error creating admin:', createError);
+        return false;
+      }
     }
-    throw new Error(getErrorMessage(error));
+    console.error('Error verifying admin:', error);
+    return false;
   }
 };
 

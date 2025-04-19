@@ -1,82 +1,49 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { verifyAdminCredentials } from '../services/firebaseService';
 import { toast } from 'react-hot-toast';
-import { verifyAdminCredentials, setupAdminAccount } from '../services/firebaseService';
-import { auth } from '../config/firebase';
 
 const Login = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: 'admin@voting.com', // Default admin email
-    password: 'Admin@123'      // Default admin password
+    email: '',
+    password: ''
   });
   const [loading, setLoading] = useState(false);
-  const [initialized, setInitialized] = useState(false);
 
-  useEffect(() => {
-    const initializeFirebase = async () => {
-      try {
-        if (!auth) {
-          throw new Error('Firebase Auth is not initialized');
-        }
-
-        // Wait for Firebase Auth initialization
-        await new Promise((resolve) => {
-          const unsubscribe = auth.onAuthStateChanged((user) => {
-            unsubscribe();
-            resolve();
-          });
-        });
-
-        // Ensure admin account exists
-        await setupAdminAccount();
-        console.log('Admin account setup checked');
-        setInitialized(true);
-      } catch (error) {
-        console.error('Initialization error:', error);
-        toast.error('Error initializing application: ' + error.message);
-      }
-    };
-
-    initializeFirebase();
-  }, []);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!initialized) {
-      toast.error('Application is still initializing. Please wait.');
-      return;
-    }
-    
     setLoading(true);
 
     try {
-      console.log('Attempting login with:', formData.email);
-      const adminUser = await verifyAdminCredentials(formData.email, formData.password);
-      console.log('Login successful:', adminUser);
+      const isAdmin = await verifyAdminCredentials(formData.email, formData.password);
       
-      if (adminUser && adminUser.isAdmin) {
-        // Store admin token
-        localStorage.setItem('adminToken', `admin-${adminUser.uid}`);
+      if (isAdmin) {
+        toast.success('Login successful!');
         navigate('/admin/dashboard');
-        toast.success('Welcome back, Admin!');
       } else {
-        throw new Error('Not an admin account');
+        toast.error('Invalid admin credentials');
       }
     } catch (error) {
-      console.error('Login error details:', error);
-      toast.error(error.message || 'Invalid admin credentials');
+      console.error('Login error:', error);
+      toast.error(error.message || 'Login failed');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleBypassLogin = () => {
+    // For development/testing only
+    localStorage.setItem('adminToken', 'dev-token');
+    toast.success('Development mode: Bypassed login');
+    navigate('/admin/dashboard');
   };
 
   return (
@@ -86,18 +53,6 @@ const Login = () => {
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Admin Login
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Default credentials:
-            <br />
-            Email: admin@voting.com
-            <br />
-            Password: Admin@123
-          </p>
-          {!initialized && (
-            <p className="mt-2 text-center text-sm text-yellow-600">
-              Initializing application...
-            </p>
-          )}
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
@@ -108,11 +63,10 @@ const Login = () => {
                 name="email"
                 type="email"
                 required
-                value={formData.email}
-                onChange={handleInputChange}
-                disabled={!initialized || loading}
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Email address"
+                value={formData.email}
+                onChange={handleChange}
               />
             </div>
             <div>
@@ -122,11 +76,10 @@ const Login = () => {
                 name="password"
                 type="password"
                 required
-                value={formData.password}
-                onChange={handleInputChange}
-                disabled={!initialized || loading}
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Password"
+                value={formData.password}
+                onChange={handleChange}
               />
             </div>
           </div>
@@ -134,13 +87,24 @@ const Login = () => {
           <div>
             <button
               type="submit"
-              disabled={!initialized || loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400"
+              disabled={loading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
-              {!initialized ? 'Initializing...' : loading ? 'Signing in...' : 'Sign in'}
+              {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
         </form>
+
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-4">
+            <button
+              onClick={handleBypassLogin}
+              className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-indigo-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Bypass Login (Development Only)
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

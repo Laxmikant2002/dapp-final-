@@ -25,7 +25,7 @@ const storage = getStorage(app);
 // Connect to emulators in development
 if (process.env.NODE_ENV === 'development') {
   try {
-    connectFirestoreEmulator(db, 'localhost', 8080);
+    connectFirestoreEmulator(db, 'localhost', 8081);
     connectAuthEmulator(auth, 'http://localhost:9099');
   } catch (error) {
     console.warn('Error connecting to emulators:', error);
