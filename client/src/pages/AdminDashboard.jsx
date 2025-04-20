@@ -6,11 +6,44 @@ import ElectionForm from '../components/ElectionForm';
 import VoterListManager from '../components/VoterListManager';
 import { verifyAdminToken } from '../services/adminServices';
 
+// Demo data for testing
+const demoElections = [
+  {
+    id: 1,
+    name: "Student Council Election 2024",
+    description: "Annual election for student council positions",
+    candidates: [
+      { id: 1, name: "John Smith", votes: 150 },
+      { id: 2, name: "Sarah Johnson", votes: 120 },
+      { id: 3, name: "Michael Brown", votes: 80 }
+    ],
+    startTime: new Date("2024-03-01").getTime(),
+    endTime: new Date("2024-03-15").getTime(),
+    isActive: true,
+    totalVotes: 350,
+    registeredVoters: 500
+  },
+  {
+    id: 2,
+    name: "Department Head Election",
+    description: "Election for new department head",
+    candidates: [
+      { id: 1, name: "Dr. Emily Wilson", votes: 45 },
+      { id: 2, name: "Prof. James Davis", votes: 38 }
+    ],
+    startTime: new Date("2024-02-15").getTime(),
+    endTime: new Date("2024-02-28").getTime(),
+    isActive: false,
+    totalVotes: 83,
+    registeredVoters: 100
+  }
+];
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('elections');
+  const [activeTab, setActiveTab] = useState('create');
   const [elections, setElections] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Check admin access on mount
   useEffect(() => {
@@ -18,41 +51,23 @@ const AdminDashboard = () => {
       navigate('/login');
       return;
     }
-    fetchElections();
   }, [navigate]);
-
-  const fetchElections = async () => {
-    try {
-      setLoading(true);
-      // TODO: Replace with actual contract call
-      const mockElections = [
-        {
-          id: 1,
-          name: "Student Council Election 2024",
-          candidates: ["0x123...", "0x456..."],
-          startTime: new Date("2024-04-20").getTime(),
-          endTime: new Date("2024-04-22").getTime(),
-          isActive: true,
-          totalVotes: 30,
-          registeredVoters: 50
-        }
-      ];
-      setElections(mockElections);
-    } catch (error) {
-      console.error('Error fetching elections:', error);
-      toast.error('Failed to fetch elections');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleEndElection = async (electionId) => {
     try {
       setLoading(true);
-      // TODO: Replace with actual contract call
+      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setElections(prevElections => 
+        prevElections.map(election => 
+          election.id === electionId 
+            ? { ...election, isActive: false }
+            : election
+        )
+      );
+      
       toast.success('Election ended successfully');
-      fetchElections();
     } catch (error) {
       console.error('Error ending election:', error);
       toast.error('Failed to end election');
@@ -64,13 +79,66 @@ const AdminDashboard = () => {
   const handleEmergencyStop = async (electionId) => {
     try {
       setLoading(true);
-      // TODO: Replace with actual contract call
+      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setElections(prevElections => 
+        prevElections.map(election => 
+          election.id === electionId 
+            ? { ...election, isActive: false }
+            : election
+        )
+      );
+      
       toast.success('Emergency stop executed successfully');
-      fetchElections();
     } catch (error) {
       console.error('Error executing emergency stop:', error);
       toast.error('Failed to execute emergency stop');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateElection = async (formData) => {
+    try {
+      setLoading(true);
+      console.log('Creating election with data:', formData);
+
+      // Format candidates data
+      const candidates = formData.candidates.map((candidate, index) => ({
+        id: Date.now() + index,
+        name: candidate.name,
+        votes: 0
+      }));
+
+      // Create new election object
+      const newElection = {
+        id: Date.now(),
+        name: formData.name,
+        description: formData.description,
+        startTime: new Date(formData.startDate).getTime(),
+        endTime: new Date(formData.endDate).getTime(),
+        candidates,
+        status: 'upcoming',
+        totalVotes: 0,
+        registeredVoters: 0
+      };
+
+      console.log('Formatted election object:', newElection);
+
+      // Update elections state
+      setElections(prevElections => {
+        console.log('Previous elections:', prevElections);
+        const updatedElections = [...prevElections, newElection];
+        console.log('Updated elections:', updatedElections);
+        return updatedElections;
+      });
+
+      toast.success('Election created successfully!');
+      navigate('/elections');
+    } catch (error) {
+      console.error('Error creating election:', error);
+      toast.error('Failed to create election');
     } finally {
       setLoading(false);
     }
@@ -88,124 +156,71 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-            <p className="mt-2 text-sm text-gray-600">
-              Manage elections, voters, and monitor voting progress
-            </p>
-          </div>
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-extrabold text-gray-900">
+            Admin Dashboard
+          </h1>
+        </div>
 
-          {/* Tab Navigation */}
-          <div className="border-b border-gray-200 mb-8">
-            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-              {['elections', 'voters', 'monitoring'].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`
-                    whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
-                    ${activeTab === tab
-                      ? 'border-indigo-500 text-indigo-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }
-                  `}
-                >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-              ))}
+        <div className="bg-white shadow rounded-lg">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex">
+              <button
+                onClick={() => setActiveTab('create')}
+                className={`${
+                  activeTab === 'create'
+                    ? 'border-indigo-500 text-indigo-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm`}
+              >
+                Create Election
+              </button>
+              <button
+                onClick={() => setActiveTab('manage')}
+                className={`${
+                  activeTab === 'manage'
+                    ? 'border-indigo-500 text-indigo-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm`}
+              >
+                Manage Elections
+              </button>
             </nav>
           </div>
 
-          {/* Tab Content */}
-          <div className="space-y-8">
-            {/* Elections Tab */}
-            {activeTab === 'elections' && (
-              <div>
-                <div className="mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900">Create New Election</h2>
-                  <ElectionForm onSuccess={fetchElections} />
-                </div>
-
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Active Elections</h2>
-                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="p-4 sm:p-6">
+            {activeTab === 'create' ? (
+              <ElectionForm onSuccess={handleCreateElection} loading={loading} />
+            ) : (
+              <div className="space-y-4">
+                <h2 className="text-lg font-medium text-gray-900">
+                  Manage Elections
+                </h2>
+                {elections.length === 0 ? (
+                  <p className="text-gray-500">No elections created yet.</p>
+                ) : (
+                  <div className="space-y-4">
                     {elections.map((election) => (
                       <div
                         key={election.id}
-                        className="bg-white rounded-lg shadow-sm p-6 border border-gray-200"
+                        className="bg-gray-50 p-4 rounded-lg shadow-sm"
                       >
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">{election.name}</h3>
-                        <div className="space-y-2 text-sm text-gray-600 mb-4">
-                          <p>Start: {new Date(election.startTime).toLocaleDateString()}</p>
-                          <p>End: {new Date(election.endTime).toLocaleDateString()}</p>
-                          <p>Status: {election.isActive ? 'Active' : 'Ended'}</p>
-                          <p>Participation: {election.totalVotes}/{election.registeredVoters} votes</p>
-                        </div>
-                        <div className="space-x-2">
-                          <button
-                            onClick={() => handleEndElection(election.id)}
-                            disabled={!election.isActive || loading}
-                            className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-                          >
-                            End Election
-                          </button>
-                          <button
-                            onClick={() => handleEmergencyStop(election.id)}
-                            disabled={!election.isActive || loading}
-                            className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
-                          >
-                            Emergency Stop
-                          </button>
+                        <h3 className="text-lg font-medium text-gray-900">
+                          {election.name}
+                        </h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {election.description}
+                        </p>
+                        <div className="mt-2 text-sm text-gray-500">
+                          <p>Start: {new Date(election.startTime).toLocaleString()}</p>
+                          <p>End: {new Date(election.endTime).toLocaleString()}</p>
                         </div>
                       </div>
                     ))}
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* Voters Tab */}
-            {activeTab === 'voters' && (
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Manage Voters</h2>
-                <VoterListManager />
-              </div>
-            )}
-
-            {/* Monitoring Tab */}
-            {activeTab === 'monitoring' && (
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Election Monitoring</h2>
-                <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {elections.map((election) => (
-                      <div key={election.id} className="bg-gray-50 rounded-lg p-4">
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">{election.name}</h3>
-                        <div className="space-y-2">
-                          <p className="text-sm text-gray-600">
-                            Participation Rate: {((election.totalVotes / election.registeredVoters) * 100).toFixed(1)}%
-                          </p>
-                          <div className="w-full bg-gray-200 rounded-full h-2.5">
-                            <div
-                              className="bg-indigo-600 h-2.5 rounded-full"
-                              style={{ width: `${(election.totalVotes / election.registeredVoters) * 100}%` }}
-                            ></div>
-                          </div>
-                          <p className="text-sm text-gray-600">
-                            Total Votes: {election.totalVotes}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            Registered Voters: {election.registeredVoters}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                )}
               </div>
             )}
           </div>

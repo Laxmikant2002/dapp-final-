@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ConnectWallet from '../components/ConnectWallet';
 import Header from '../components/Header';
 import { FaUserTie, FaUsers } from 'react-icons/fa';
-import BlockchainStatus from '../components/BlockchainStatus';
 import FirebaseTest from '../components/FirebaseTest';
 
 const RoleSelectionModal = ({ onClose, onSelect }) => {
@@ -138,11 +137,6 @@ const Home = () => {
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <Header />
       
-      {/* Add FirebaseTest component */}
-      <div className="container mx-auto px-4 py-4">
-        <FirebaseTest />
-      </div>
-
       <main className="flex-grow">
         {/* Hero Section */}
         <section className="relative overflow-hidden">
@@ -425,10 +419,6 @@ const Home = () => {
               </div>
             </dl>
           </div>
-        </div>
-
-        <div className="mt-10">
-          <BlockchainStatus />
         </div>
       </main>
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import { FiPlus, FiTrash2, FiUpload } from 'react-icons/fi';
 import { useContract } from '../context/ContractContext';
 import { createElection, addCandidateToElection } from '../services/firebaseService';
@@ -107,6 +107,8 @@ const ElectionForm = ({ onSuccess }) => {
       candidateImagePreview: '',
       partyImagePreview: ''
     });
+
+    toast.success('Candidate added successfully');
   };
 
   const removeCandidate = (index) => {
@@ -114,20 +116,34 @@ const ElectionForm = ({ onSuccess }) => {
       ...prev,
       candidates: prev.candidates.filter((_, i) => i !== index)
     }));
+    toast.success('Candidate removed');
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // Prevent default form submission
+    console.log('Form submission started');
+    
+    // Log the current form data
+    console.log('Current form data:', formData);
     
     // Validate required fields
     if (!formData.name || !formData.description || !formData.startDate || 
         !formData.startTime || !formData.endDate || !formData.endTime) {
+      console.log('Missing required fields:', {
+        name: !formData.name,
+        description: !formData.description,
+        startDate: !formData.startDate,
+        startTime: !formData.startTime,
+        endDate: !formData.endDate,
+        endTime: !formData.endTime
+      });
       toast.error('Please fill in all required fields');
       return;
     }
 
     // Validate at least two candidates
     if (formData.candidates.length < 2) {
+      console.log('Not enough candidates. Current count:', formData.candidates.length);
       toast.error('At least two candidates are required');
       return;
     }
@@ -136,6 +152,14 @@ const ElectionForm = ({ onSuccess }) => {
     const startDateTime = new Date(`${formData.startDate} ${formData.startTime}`);
     const endDateTime = new Date(`${formData.endDate} ${formData.endTime}`);
     const now = new Date();
+
+    console.log('Date validation:', {
+      startDateTime,
+      endDateTime,
+      now,
+      isStartValid: startDateTime > now,
+      isEndValid: endDateTime > startDateTime
+    });
 
     if (startDateTime < now) {
       toast.error('Start date must be in the future');
@@ -147,105 +171,86 @@ const ElectionForm = ({ onSuccess }) => {
       return;
     }
 
-    setLoading(true);
     try {
-      if (!contract) {
-        throw new Error('Contract not initialized');
-      }
+      setLoading(true);
+      console.log('Creating election...');
 
-      // Format the data for the contract
-      const startTime = Math.floor(startDateTime.getTime() / 1000);
-      const endTime = Math.floor(endDateTime.getTime() / 1000);
-
-      // Create election using contract
-      const tx = await contract.createElection(
-        formData.name,
-        formData.description,
-        startTime,
-        endTime,
-        formData.candidates.map(candidate => ({
-          name: candidate.fullName,
-          party: candidate.partyName,
-          description: candidate.description
-        }))
-      );
-
-      // Wait for transaction to be mined
-      await tx.wait();
-
-      // Save to Firebase
-      const electionData = {
+      // Create election object with all the necessary data
+      const newElection = {
         name: formData.name,
         description: formData.description,
-        startTime: startDateTime,
-        endTime: endDateTime,
-        status: 'active'
+        startTime: startDateTime.getTime(),
+        endTime: endDateTime.getTime(),
+        candidates: formData.candidates.map(candidate => ({
+          ...candidate,
+          votes: 0
+        })),
+        registeredVoters: 0,
+        isActive: true
       };
 
-      // Create election in Firebase
-      const savedElection = await createElection(electionData);
+      console.log('New election object created:', newElection);
 
-      // Add candidates to Firebase
-      await Promise.all(formData.candidates.map(candidate => 
-        addCandidateToElection(savedElection.id, {
-          name: candidate.fullName,
-          party: candidate.partyName,
-          description: candidate.description,
-          imageUrl: candidate.candidateImagePreview,
-          partySymbol: candidate.partyImagePreview
-        })
-      ));
-      
-      toast.success('Election created successfully');
-      
-      // Reset form
-      setFormData({
-        name: '',
-        description: '',
-        startDate: '',
-        startTime: '',
-        endDate: '',
-        endTime: '',
-        candidates: []
-      });
-      
-      // Notify parent component
-      onSuccess?.();
+      // Call the onSuccess callback with the new election
+      if (typeof onSuccess === 'function') {
+        console.log('Calling onSuccess callback...');
+        await onSuccess(newElection);
+        console.log('onSuccess callback completed');
+        
+        // Reset form after successful submission
+        setFormData({
+          name: '',
+          description: '',
+          startDate: '',
+          startTime: '',
+          endDate: '',
+          endTime: '',
+          candidates: []
+        });
+        
+        toast.success('Election created successfully');
+      } else {
+        console.error('onSuccess is not a function:', onSuccess);
+        throw new Error('Invalid callback function');
+      }
+
     } catch (error) {
       console.error('Error creating election:', error);
-      toast.error(error.message || 'Failed to create election. Please make sure you are connected to the correct network and have sufficient funds.');
+      toast.error('Failed to create election: ' + (error.message || 'Unknown error occurred'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Election Details */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Election Name</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Description</label>
-            <input
-              type="text"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </div>
+    <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow">
+      {/* Basic Information */}
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Election Name</label>
+          <input
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Description</label>
+          <textarea
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            rows={3}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            required
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-gray-700">Start Date</label>
             <input
@@ -253,8 +258,8 @@ const ElectionForm = ({ onSuccess }) => {
               name="startDate"
               value={formData.startDate}
               onChange={handleChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
               required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             />
           </div>
           <div>
@@ -264,8 +269,8 @@ const ElectionForm = ({ onSuccess }) => {
               name="startTime"
               value={formData.startTime}
               onChange={handleChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
               required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             />
           </div>
           <div>
@@ -275,8 +280,8 @@ const ElectionForm = ({ onSuccess }) => {
               name="endDate"
               value={formData.endDate}
               onChange={handleChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
               required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             />
           </div>
           <div>
@@ -286,182 +291,157 @@ const ElectionForm = ({ onSuccess }) => {
               name="endTime"
               value={formData.endTime}
               onChange={handleChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
               required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             />
           </div>
         </div>
+      </div>
 
+      {/* Candidates Section */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium text-gray-900">Candidates</h3>
+        
         {/* Candidate List */}
-        <div className="mt-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Candidates</h3>
-          <div className="grid grid-cols-1 gap-6 mb-6">
-            {formData.candidates.map((candidate, index) => (
-              <div key={index} className="bg-gray-50 p-4 rounded-lg relative">
-                <button
-                  type="button"
-                  onClick={() => removeCandidate(index)}
-                  className="absolute top-2 right-2 text-red-600 hover:text-red-800"
-                >
-                  <FiTrash2 className="w-5 h-5" />
-                </button>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">Full Name:</p>
-                    <p className="text-sm text-gray-900">{candidate.fullName}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">Description:</p>
-                    <p className="text-sm text-gray-900">{candidate.description}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">Party:</p>
-                    <p className="text-sm text-gray-900">{candidate.partyName}</p>
-                  </div>
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-4">
-                  {candidate.candidateImagePreview && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-700 mb-2">Candidate Photo:</p>
-                      <img
-                        src={candidate.candidateImagePreview}
-                        alt="Candidate"
-                        className="h-24 w-24 object-cover rounded-lg"
-                      />
-                    </div>
-                  )}
-                  {candidate.partyImagePreview && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-700 mb-2">Party Symbol:</p>
-                      <img
-                        src={candidate.partyImagePreview}
-                        alt="Party Symbol"
-                        className="h-24 w-24 object-cover rounded-lg"
-                      />
-                    </div>
-                  )}
-                </div>
+        <div className="space-y-4">
+          {formData.candidates.map((candidate, index) => (
+            <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div>
+                <p className="font-medium">{candidate.fullName}</p>
+                <p className="text-sm text-gray-500">{candidate.partyName}</p>
               </div>
-            ))}
+              <button
+                type="button"
+                onClick={() => removeCandidate(index)}
+                className="text-red-600 hover:text-red-800"
+              >
+                <FiTrash2 className="w-5 h-5" />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Add New Candidate Form */}
+        <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+          <h4 className="font-medium">Add New Candidate</h4>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Full Name</label>
+              <input
+                type="text"
+                name="fullName"
+                value={newCandidate.fullName}
+                onChange={handleCandidateChange}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Party Name</label>
+              <input
+                type="text"
+                name="partyName"
+                value={newCandidate.partyName}
+                onChange={handleCandidateChange}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
           </div>
 
-          {/* Add New Candidate Form */}
-          <div className="bg-gray-50 p-6 rounded-lg">
-            <h4 className="text-md font-medium text-gray-900 mb-4">Add New Candidate</h4>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Full Name</label>
-                <input
-                  type="text"
-                  name="fullName"
-                  value={newCandidate.fullName}
-                  onChange={handleCandidateChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Description</label>
-                <textarea
-                  name="description"
-                  value={newCandidate.description}
-                  onChange={handleCandidateChange}
-                  rows="3"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  placeholder="Enter candidate's background, experience, and key points..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Party Name</label>
-                <input
-                  type="text"
-                  name="partyName"
-                  value={newCandidate.partyName}
-                  onChange={handleCandidateChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Candidate Photo</label>
-                <div className="mt-1 flex items-center">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Description</label>
+            <textarea
+              name="description"
+              value={newCandidate.description}
+              onChange={handleCandidateChange}
+              rows={2}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Candidate Photo</label>
+              <div className="mt-1 flex items-center space-x-4">
+                <label className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                  <FiUpload className="w-5 h-5 mr-2" />
+                  Upload
                   <input
                     type="file"
                     name="candidateImage"
-                    accept="image/*"
                     onChange={handleCandidateChange}
+                    accept="image/*"
                     className="hidden"
-                    id="candidateImage"
                   />
-                  <label
-                    htmlFor="candidateImage"
-                    className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  >
-                    <FiUpload className="mr-2 h-5 w-5" />
-                    Upload Photo
-                  </label>
-                  {newCandidate.candidateImagePreview && (
-                    <img
-                      src={newCandidate.candidateImagePreview}
-                      alt="Candidate Preview"
-                      className="ml-4 h-12 w-12 object-cover rounded-full"
-                    />
-                  )}
-                </div>
+                </label>
+                {newCandidate.candidateImagePreview && (
+                  <img
+                    src={newCandidate.candidateImagePreview}
+                    alt="Candidate preview"
+                    className="h-10 w-10 rounded-full object-cover"
+                  />
+                )}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Party Symbol</label>
-                <div className="mt-1 flex items-center">
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Party Symbol</label>
+              <div className="mt-1 flex items-center space-x-4">
+                <label className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                  <FiUpload className="w-5 h-5 mr-2" />
+                  Upload
                   <input
                     type="file"
                     name="partyImage"
-                    accept="image/*"
                     onChange={handleCandidateChange}
+                    accept="image/*"
                     className="hidden"
-                    id="partyImage"
                   />
-                  <label
-                    htmlFor="partyImage"
-                    className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  >
-                    <FiUpload className="mr-2 h-5 w-5" />
-                    Upload Symbol
-                  </label>
-                  {newCandidate.partyImagePreview && (
-                    <img
-                      src={newCandidate.partyImagePreview}
-                      alt="Party Symbol Preview"
-                      className="ml-4 h-12 w-12 object-cover rounded-full"
-                    />
-                  )}
-                </div>
+                </label>
+                {newCandidate.partyImagePreview && (
+                  <img
+                    src={newCandidate.partyImagePreview}
+                    alt="Party symbol preview"
+                    className="h-10 w-10 rounded-full object-cover"
+                  />
+                )}
               </div>
             </div>
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={addCandidate}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                <FiPlus className="mr-2 h-5 w-5" />
-                Add Candidate
-              </button>
-            </div>
           </div>
-        </div>
 
-        {/* Submit Button */}
-        <div className="flex justify-end mt-6">
           <button
-            type="submit"
-            disabled={loading || formData.candidates.length < 2}
-            className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
-              loading || formData.candidates.length < 2 ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
+            type="button"
+            onClick={addCandidate}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
           >
-            {loading ? 'Creating Election...' : 'Create Election'}
+            <FiPlus className="w-5 h-5 mr-2" />
+            Add Candidate
           </button>
         </div>
-      </form>
-    </div>
+      </div>
+
+      {/* Submit Button */}
+      <div>
+        <button
+          type="submit"
+          disabled={loading}
+          className={`w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
+            loading ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
+        >
+          {loading ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Creating Election...
+            </>
+          ) : (
+            'Create Election'
+          )}
+        </button>
+      </div>
+    </form>
   );
 };
 

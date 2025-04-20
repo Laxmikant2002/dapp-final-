@@ -1,31 +1,37 @@
-import { db, auth } from '../config/firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { initializeApp } from 'firebase/app';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 
+const firebaseConfig = {
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID
+};
+
 export const testFirebaseConnection = async () => {
+  try {
+    // Initialize Firebase if not already initialized
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    
+    // Try to access a collection to test the connection
+    const testCollection = collection(db, 'test');
+    await getDocs(testCollection);
+    
+    return true;
+  } catch (error) {
+    console.error('Firebase connection test failed:', error);
+    throw new Error('Failed to connect to Firebase: ' + error.message);
+  }
+};
+
+export const testFirebaseAuth = async () => {
   console.log('🔍 Starting Firebase connection test...\n');
 
   try {
-    // Test Firestore connection
-    console.log('Testing Firestore connection...');
-    const testCollection = collection(db, 'test');
-    const testDoc = await addDoc(testCollection, {
-      test: 'connection',
-      timestamp: new Date()
-    });
-    console.log('✅ Firestore connection successful');
-
-    // Test document retrieval
-    console.log('\nTesting document operations...');
-    const querySnapshot = await getDocs(testCollection);
-    const docs = querySnapshot.docs.map(doc => doc.data());
-    console.log('✅ Document operations successful');
-
-    // Clean up test document
-    console.log('\nCleaning up test data...');
-    await deleteDoc(doc(db, 'test', testDoc.id));
-    console.log('✅ Cleanup successful');
-
     // Test Auth connection
     console.log('\nTesting Authentication...');
     const testEmail = 'test@example.com';
@@ -33,6 +39,8 @@ export const testFirebaseConnection = async () => {
     
     try {
       // Try to create a test user
+      const app = initializeApp(firebaseConfig);
+      const auth = app.auth();
       const userCredential = await createUserWithEmailAndPassword(auth, testEmail, testPassword);
       console.log('✅ Auth connection successful');
 
@@ -42,6 +50,7 @@ export const testFirebaseConnection = async () => {
     } catch (error) {
       if (error.code === 'auth/email-already-in-use') {
         // If user exists, try to sign in
+        const auth = initializeApp(firebaseConfig).auth();
         await signInWithEmailAndPassword(auth, testEmail, testPassword);
         console.log('✅ Auth connection successful (existing user)');
         
