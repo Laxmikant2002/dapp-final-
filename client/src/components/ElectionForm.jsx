@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { FiPlus, FiTrash2, FiUpload } from 'react-icons/fi';
 import { useContract } from '../context/ContractContext';
-import { createElection, addCandidateToElection } from '../services/firebaseService';
+import { ContractContext } from '../context/ContractContext';
 
 const ElectionForm = ({ onSuccess }) => {
   const { contract } = useContract();

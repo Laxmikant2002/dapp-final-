@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import Header from '../components/Header';
 import ElectionForm from '../components/ElectionForm';
-import VoterListManager from '../components/VoterListManager';
 import { verifyAdminToken } from '../services/adminServices';
 
 // Demo data for testing
@@ -144,16 +142,50 @@ const AdminDashboard = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
+  const renderContent = () => {
+    if (loading) {
+      return (
         <div className="flex items-center justify-center h-[calc(100vh-64px)]">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
         </div>
+      );
+    }
+
+    if (activeTab === 'create') {
+      return <ElectionForm onSuccess={handleCreateElection} loading={loading} />;
+    }
+
+    return (
+      <div className="space-y-4">
+        <h2 className="text-lg font-medium text-gray-900">
+          Manage Elections
+        </h2>
+        {elections.length === 0 ? (
+          <p className="text-gray-500">No elections created yet.</p>
+        ) : (
+          <div className="space-y-4">
+            {elections.map((election) => (
+              <div
+                key={election.id}
+                className="bg-gray-50 p-4 rounded-lg shadow-sm"
+              >
+                <h3 className="text-lg font-medium text-gray-900">
+                  {election.name}
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {election.description}
+                </p>
+                <div className="mt-2 text-sm text-gray-500">
+                  <p>Start: {new Date(election.startTime).toLocaleString()}</p>
+                  <p>End: {new Date(election.endTime).toLocaleString()}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -191,38 +223,7 @@ const AdminDashboard = () => {
           </div>
 
           <div className="p-4 sm:p-6">
-            {activeTab === 'create' ? (
-              <ElectionForm onSuccess={handleCreateElection} loading={loading} />
-            ) : (
-              <div className="space-y-4">
-                <h2 className="text-lg font-medium text-gray-900">
-                  Manage Elections
-                </h2>
-                {elections.length === 0 ? (
-                  <p className="text-gray-500">No elections created yet.</p>
-                ) : (
-                  <div className="space-y-4">
-                    {elections.map((election) => (
-                      <div
-                        key={election.id}
-                        className="bg-gray-50 p-4 rounded-lg shadow-sm"
-                      >
-                        <h3 className="text-lg font-medium text-gray-900">
-                          {election.name}
-                        </h3>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {election.description}
-                        </p>
-                        <div className="mt-2 text-sm text-gray-500">
-                          <p>Start: {new Date(election.startTime).toLocaleString()}</p>
-                          <p>End: {new Date(election.endTime).toLocaleString()}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            {renderContent()}
           </div>
         </div>
       </div>

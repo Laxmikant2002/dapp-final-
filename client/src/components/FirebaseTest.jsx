@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { testFirebaseConnection } from '../utils/firebaseTest';
 import { toast } from 'react-hot-toast';
 

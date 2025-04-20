@@ -24,21 +24,23 @@ export const ContractProvider = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [networkError, setNetworkError] = useState(null);
+  const [chainId, setChainId] = useState(null);
 
   // Initialize provider
   useEffect(() => {
     const init = async () => {
       try {
         if (typeof window.ethereum !== 'undefined') {
-          // Request account access if needed
-          await window.ethereum.request({ method: 'eth_requestAccounts' });
-          
           const provider = new ethers.providers.Web3Provider(window.ethereum);
           setProvider(provider);
 
+          // Get the network
+          const network = await provider.getNetwork();
+          setChainId(network.chainId);
+
           // Listen for network changes
           window.ethereum.on('chainChanged', (chainId) => {
-            window.location.reload();
+            setChainId(parseInt(chainId, 16));
           });
 
           // Listen for account changes
@@ -76,6 +78,28 @@ export const ContractProvider = ({ children }) => {
     };
   }, []);
 
+  const switchToHardhat = async () => {
+    try {
+      await window.ethereum.request({
+        method: 'wallet_addEthereumChain',
+        params: [{
+          chainId: '0x7A69', // 31337 in hex
+          chainName: 'Hardhat Local',
+          nativeCurrency: {
+            name: 'Ethereum',
+            symbol: 'ETH',
+            decimals: 18
+          },
+          rpcUrls: ['http://127.0.0.1:8545']
+        }]
+      });
+      return true;
+    } catch (error) {
+      console.error('Error switching to Hardhat network:', error);
+      return false;
+    }
+  };
+
   const connectWallet = async () => {
     try {
       setIsLoading(true);
@@ -93,6 +117,21 @@ export const ContractProvider = ({ children }) => {
       const account = accounts[0];
       setAccount(account);
 
+      // Get the current network
+      const network = await provider.getNetwork();
+      setChainId(network.chainId);
+
+      // If not on Hardhat network, try to switch
+      if (network.chainId !== 31337) {
+        const switched = await switchToHardhat();
+        if (!switched) {
+          throw new Error(
+            'Please switch to the Hardhat network (chainId: 31337) in your MetaMask wallet. ' +
+            'Make sure your local Hardhat node is running.'
+          );
+        }
+      }
+
       // Get signer
       const signer = provider.getSigner();
       setSigner(signer);
@@ -105,18 +144,12 @@ export const ContractProvider = ({ children }) => {
       );
       setContract(contract);
 
-      // Verify network
-      const network = await provider.getNetwork();
-      if (network.chainId !== 31337) { // Hardhat network
-        throw new Error('Please connect to the Hardhat network');
-      }
-
       setIsConnected(true);
       toast.success('Wallet connected successfully');
     } catch (error) {
       console.error('Connection error:', error);
       setNetworkError(error.message);
-      toast.error(error.message);
+      toast.error(`Connection error: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -141,6 +174,7 @@ export const ContractProvider = ({ children }) => {
         isConnected,
         isLoading,
         networkError,
+        chainId,
         connectWallet,
         disconnectWallet
       }}

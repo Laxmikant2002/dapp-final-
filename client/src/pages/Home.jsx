@@ -1,11 +1,14 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { ContractContext } from '../context/ContractContext';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConnectWallet from '../components/ConnectWallet';
 import Header from '../components/Header';
 import { FaUserTie, FaUsers } from 'react-icons/fa';
-import FirebaseTest from '../components/FirebaseTest';
+import { useAccount } from 'wagmi';
+import { toast } from 'sonner';
+import { checkVoterStatus } from '../services/firebaseService';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 const RoleSelectionModal = ({ onClose, onSelect }) => {
   return (
@@ -76,10 +79,11 @@ const RoleSelectionModal = ({ onClose, onSelect }) => {
 };
 
 const Home = () => {
-  const { isConnected, account } = useContext(ContractContext);
   const [activeFeature, setActiveFeature] = useState(0);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { address: accountAddress, isConnected: isConnectedWallet } = useAccount();
 
   const features = [
     {
@@ -119,15 +123,81 @@ const Home = () => {
   }, [features.length]);
 
   useEffect(() => {
-    if (isConnected && account) {
+    // Check for redirect message
+    const message = location.state?.message;
+    if (message) {
+      toast.error(message);
+      // Clear the message from location state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
+
+  useEffect(() => {
+    const checkAndRedirect = async () => {
+      if (isConnectedWallet && accountAddress) {
+        try {
+          const voterStatus = await checkVoterStatus(accountAddress);
+          
+          if (voterStatus.status === 'approved') {
+            // Get the stored path from sessionStorage
+            const redirectPath = sessionStorage.getItem('redirectPath');
+            if (redirectPath) {
+              sessionStorage.removeItem('redirectPath');
+              navigate(redirectPath);
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Error checking voter status:', error);
+        }
+      }
+    };
+
+    checkAndRedirect();
+  }, [accountAddress, isConnectedWallet, navigate]);
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (isConnectedWallet && accountAddress) {
+        try {
+          const userQuery = query(
+            collection(db, 'users'),
+            where('ethAddress', '==', accountAddress),
+            where('isAdmin', '==', true)
+          );
+          const querySnapshot = await getDocs(userQuery);
+          
+          if (!querySnapshot.empty) {
+            toast.info(
+              'Admin account detected. Click "Switch Account" to use a different wallet for voter registration.',
+              { duration: 5000 }
+            );
+          } else {
+            // Show role selection modal for non-admin accounts
+            setShowRoleModal(true);
+          }
+        } catch (error) {
+          console.error('Error checking admin status:', error);
+        }
+      }
+    };
+
+    checkAdminStatus();
+  }, [accountAddress, isConnectedWallet]);
+
+  // Add a new useEffect to handle account changes
+  useEffect(() => {
+    if (isConnectedWallet && accountAddress) {
+      // Show role selection modal when account changes
       setShowRoleModal(true);
     }
-  }, [isConnected, account]);
+  }, [accountAddress, isConnectedWallet]);
 
   const handleRoleSelection = (role) => {
     setShowRoleModal(false);
     if (role === 'admin') {
-      navigate('/login');
+      // Navigate to admin login page
+      navigate('/admin/login');
     } else {
       navigate('/register');
     }
@@ -161,7 +231,7 @@ const Home = () => {
                   Vote securely and transparently using blockchain technology. Connect your wallet to get started.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center lg:justify-start space-y-4 sm:space-y-0 sm:space-x-4">
-                  {!isConnected && <ConnectWallet />}
+                  {!isConnectedWallet && <ConnectWallet />}
                 </div>
               </motion.div>
               
@@ -277,7 +347,7 @@ const Home = () => {
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">Admin Dashboard</h3>
                   <p className="text-gray-600 mb-4">Manage elections and view voter statistics.</p>
                   <Link
-                    to="/login"
+                    to="/admin/login"
                     className="inline-flex items-center text-purple-600 hover:text-purple-800"
                   >
                     Go to Admin Login

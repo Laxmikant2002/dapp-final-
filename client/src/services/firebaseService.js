@@ -10,7 +10,8 @@ import {
   orderBy,
   serverTimestamp,
   Timestamp,
-  connectFirestoreEmulator
+  connectFirestoreEmulator,
+  updateDoc
 } from 'firebase/firestore';
 import { 
   createUserWithEmailAndPassword,
@@ -49,42 +50,64 @@ const handleFirestoreError = (error) => {
 };
 
 // User Management
-export const registerUser = async (email, password, userData, ethAddress) => {
+
+export const registerUser = async (userData, ethAddress) => {
   try {
-    // Check if user already exists
+    // Check if user with this wallet address already exists
     const userQuery = query(
       collection(db, 'users'),
-      where('email', '==', email)
+      where('ethAddress', '==', ethAddress)
     );
     const querySnapshot = await getDocs(userQuery);
     
     if (!querySnapshot.empty) {
-      throw new Error('User already registered with this email');
+      throw new Error('User already registered with this wallet address');
     }
 
-    // Create user in Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-
-    // Create user document in Firestore
-    const userRef = doc(db, 'users', user.uid);
+    // Create a new user document in Firestore with pending approval status
+    const userRef = doc(collection(db, 'users'));
     await setDoc(userRef, {
       ...userData,
-      email: email,
-      ethAddress: ethAddress,
+      ethAddress,
       createdAt: serverTimestamp(),
-      isAdmin: userData.role === 'admin',
-      isVerified: false
+      isVerified: false,
+      approvalStatus: 'pending', // New field: pending, approved, rejected
+      role: userData.role || 'voter',
+      // Hash sensitive data for on-chain storage
+      hashedVoterId: await hashVoterId(userData.voterId),
+      // Encrypt sensitive personal data
+      encryptedData: await encryptUserData({
+        fullName: userData.fullName,
+        dateOfBirth: userData.dateOfBirth,
+        aadhaarNumber: userData.aadhaarNumber,
+        livingAddress: userData.livingAddress
+      })
     });
 
     return {
-      id: user.uid,
-      email: user.email,
-      ...userData
+      id: userRef.id,
+      ...userData,
+      ethAddress,
+      approvalStatus: 'pending'
     };
   } catch (error) {
-    handleFirestoreError(error);
+    console.error('Error registering user:', error);
+    throw error;
   }
+};
+
+// Helper function to hash voter ID
+const hashVoterId = async (voterId) => {
+  // In a real implementation, use a secure hashing algorithm
+  // This is a placeholder for demonstration
+  return btoa(voterId);
+};
+
+// Helper function to encrypt user data
+const encryptUserData = async (data) => {
+  // In a real implementation, use proper encryption
+  // This is a placeholder for demonstration
+  return btoa(JSON.stringify(data));
 };
 
 export const loginUser = async (email, password) => {
@@ -450,5 +473,79 @@ const getErrorMessage = (error) => {
       return 'Internal authentication error. Please try again';
     default:
       return error.message || 'Authentication failed';
+  }
+};
+
+// Admin functions for voter management
+export const getPendingVoters = async () => {
+  try {
+    const votersQuery = query(
+      collection(db, 'users'),
+      where('role', '==', 'voter'),
+      where('approvalStatus', '==', 'pending')
+    );
+    const querySnapshot = await getDocs(votersQuery);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error('Error fetching pending voters:', error);
+    throw error;
+  }
+};
+
+export const approveVoter = async (voterId) => {
+  try {
+    const voterRef = doc(db, 'users', voterId);
+    await updateDoc(voterRef, {
+      approvalStatus: 'approved',
+      isVerified: true,
+      approvedAt: serverTimestamp()
+    });
+    return true;
+  } catch (error) {
+    console.error('Error approving voter:', error);
+    throw error;
+  }
+};
+
+export const rejectVoter = async (voterId, reason) => {
+  try {
+    const voterRef = doc(db, 'users', voterId);
+    await updateDoc(voterRef, {
+      approvalStatus: 'rejected',
+      rejectionReason: reason,
+      rejectedAt: serverTimestamp()
+    });
+    return true;
+  } catch (error) {
+    console.error('Error rejecting voter:', error);
+    throw error;
+  }
+};
+
+// Function to check voter registration status
+export const checkVoterStatus = async (ethAddress) => {
+  try {
+    const userQuery = query(
+      collection(db, 'users'),
+      where('ethAddress', '==', ethAddress)
+    );
+    const querySnapshot = await getDocs(userQuery);
+    
+    if (querySnapshot.empty) {
+      return { status: 'not_registered' };
+    }
+
+    const userData = querySnapshot.docs[0].data();
+    return {
+      status: userData.approvalStatus,
+      isVerified: userData.isVerified,
+      rejectionReason: userData.rejectionReason
+    };
+  } catch (error) {
+    console.error('Error checking voter status:', error);
+    throw error;
   }
 }; 
