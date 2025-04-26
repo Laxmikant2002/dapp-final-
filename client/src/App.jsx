@@ -12,6 +12,7 @@ import { ContractProvider } from './context/ContractContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/common/AdminRoute';
 
 // Pages
 import Home from './pages/Home';
@@ -21,6 +22,7 @@ import CandidateDetails from './pages/CandidateDetails';
 import VoteVerification from './pages/VoteVerification';
 import AdminDashboard from './pages/AdminDashboard';
 import PendingApproval from './pages/PendingApproval';
+import Login from './pages/Login';
 
 const queryClient = new QueryClient();
 
@@ -42,6 +44,7 @@ function App() {
                   <Route path="/" element={<Home />} />
                   <Route path="/register" element={<Register />} />
                   <Route path="/pending-approval" element={<PendingApproval />} />
+                  <Route path="/login" element={<Login />} />
 
                   {/* Protected Voter Routes */}
                   <Route
@@ -73,9 +76,9 @@ function App() {
                   <Route
                     path="/admin/*"
                     element={
-                      <ProtectedRoute requiresAuth={true} requiresVoter={false}>
+                      <AdminRoute>
                         <AdminDashboard />
-                      </ProtectedRoute>
+                      </AdminRoute>
                     }
                   />
                 </Routes>
@@ -90,4 +93,4 @@ function App() {
   );
 }
 
-export default App;
+export default App; 

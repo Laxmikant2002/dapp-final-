@@ -24,6 +24,7 @@
     "react-router-dom": "^6.16.0",
     "react-scripts": "5.0.1",
     "sonner": "^2.0.3",
+    "typescript": "^5.0.4",
     "viem": "^2.27.2",
     "wagmi": "^2.14.16",
     "web-vitals": "^4.2.4"

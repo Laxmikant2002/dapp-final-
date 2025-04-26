@@ -1,8 +1,52 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;  // For development only - make more secure for production
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    function isElectionOwner(electionId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/elections/$(electionId)) &&
+        get(/databases/$(database)/documents/elections/$(electionId)).data.ownerId == request.auth.uid;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && request.auth.uid == userId;
+      allow delete: if isAdmin();
+    }
+
+    // Elections collection
+    match /elections/{electionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if isAdmin() || isElectionOwner(electionId);
+      allow delete: if isAdmin();
+      
+      // Candidates subcollection
+      match /candidates/{candidateId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin() || isElectionOwner(electionId);
+      }
+      
+      // Votes subcollection
+      match /votes/{voteId} {
+        allow read: if isAdmin() || isElectionOwner(electionId);
+        allow create: if isAuthenticated() && 
+          !exists(/databases/$(database)/documents/elections/$(electionId)/votes/$(request.auth.uid));
+        allow update, delete: if false;
+      }
     }
   }
-} 
+}
