@@ -40,7 +40,7 @@ const RoleSelectionModal = ({ onClose, onSelect }) => {
               </div>
               <div className="ml-4">
                 <h3 className="text-lg font-medium text-gray-900">Voter</h3>
-                <p className="text-sm text-gray-500">Cast your vote in elections</p>
+                <p className="text-sm text-gray-500">Register and cast your vote in elections</p>
               </div>
             </div>
             <svg className="w-5 h-5 text-gray-400 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -58,7 +58,7 @@ const RoleSelectionModal = ({ onClose, onSelect }) => {
               </div>
               <div className="ml-4">
                 <h3 className="text-lg font-medium text-gray-900">Admin</h3>
-                <p className="text-sm text-gray-500">Manage elections and voters</p>
+                <p className="text-sm text-gray-500">Login to manage elections and voters</p>
               </div>
             </div>
             <svg className="w-5 h-5 text-gray-400 group-hover:text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,6 +136,21 @@ const Home = () => {
     const checkAndRedirect = async () => {
       if (isConnectedWallet && accountAddress) {
         try {
+          // Check if user is an admin
+          const adminQuery = query(
+            collection(db, 'users'),
+            where('ethAddress', '==', accountAddress),
+            where('isAdmin', '==', true)
+          );
+          const adminSnapshot = await getDocs(adminQuery);
+          
+          if (!adminSnapshot.empty) {
+            // User is an admin, redirect to admin dashboard
+            navigate('/admin/dashboard');
+            return;
+          }
+
+          // Check voter status
           const voterStatus = await checkVoterStatus(accountAddress);
           
           if (voterStatus.status === 'approved') {
@@ -146,9 +161,15 @@ const Home = () => {
               navigate(redirectPath);
               return;
             }
+            // If no redirect path, go to elections page
+            navigate('/elections');
+          } else {
+            // Show role selection modal for non-admin and non-approved voters
+            setShowRoleModal(true);
           }
         } catch (error) {
-          console.error('Error checking voter status:', error);
+          console.error('Error checking user status:', error);
+          toast.error('Error checking user status. Please try again.');
         }
       }
     };
@@ -156,47 +177,9 @@ const Home = () => {
     checkAndRedirect();
   }, [accountAddress, isConnectedWallet, navigate]);
 
-  useEffect(() => {
-    const checkAdminStatus = async () => {
-      if (isConnectedWallet && accountAddress) {
-        try {
-          const userQuery = query(
-            collection(db, 'users'),
-            where('ethAddress', '==', accountAddress),
-            where('isAdmin', '==', true)
-          );
-          const querySnapshot = await getDocs(userQuery);
-          
-          if (!querySnapshot.empty) {
-            toast.info(
-              'Admin account detected. Click "Switch Account" to use a different wallet for voter registration.',
-              { duration: 5000 }
-            );
-          } else {
-            // Show role selection modal for non-admin accounts
-            setShowRoleModal(true);
-          }
-        } catch (error) {
-          console.error('Error checking admin status:', error);
-        }
-      }
-    };
-
-    checkAdminStatus();
-  }, [accountAddress, isConnectedWallet]);
-
-  // Add a new useEffect to handle account changes
-  useEffect(() => {
-    if (isConnectedWallet && accountAddress) {
-      // Show role selection modal when account changes
-      setShowRoleModal(true);
-    }
-  }, [accountAddress, isConnectedWallet]);
-
   const handleRoleSelection = (role) => {
     setShowRoleModal(false);
     if (role === 'admin') {
-      // Navigate to admin login page
       navigate('/admin/login');
     } else {
       navigate('/register');
