@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { FaUserCircle, FaCheckCircle } from 'react-icons/fa';
-import { getElectionById, getCandidates } from '../services/firebaseService';
 import { useContract } from '../context/ContractContext';
 
 const Vote = () => {
@@ -17,14 +16,35 @@ const Vote = () => {
 
   useEffect(() => {
     fetchElectionData();
-  }, [electionId]);
+  }, [electionId, contract]);
 
   const fetchElectionData = async () => {
     try {
-      const electionData = await getElectionById(electionId);
-      const candidatesData = await getCandidates(electionId);
-      setElection(electionData);
-      setCandidates(candidatesData);
+      if (!contract) return;
+
+      // Get election data from blockchain
+      const electionData = await contract.getElection(electionId);
+      setElection({
+        id: electionId,
+        name: electionData.name,
+        description: electionData.description,
+        isActive: electionData.isActive
+      });
+
+      // Get candidates from blockchain
+      const candidateCount = await contract.getCandidateCount(electionId);
+      const candidatePromises = [];
+      for (let i = 0; i < candidateCount; i++) {
+        candidatePromises.push(contract.getCandidate(electionId, i));
+      }
+      const candidatesData = await Promise.all(candidatePromises);
+      
+      setCandidates(candidatesData.map((candidate, index) => ({
+        id: index,
+        name: candidate.name,
+        party: candidate.party,
+        description: candidate.description
+      })));
     } catch (error) {
       console.error('Error fetching election data:', error);
       toast.error('Failed to load election data');

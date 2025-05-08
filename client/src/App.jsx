@@ -4,8 +4,7 @@ import { WagmiConfig } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 
-import { config } from './config/wagmi';
-import { setupAdminAccount } from './services/firebaseService';
+import { client } from './config/wagmi';
 import { ContractProvider } from './context/ContractContext';
 
 // Components
@@ -28,12 +27,12 @@ const queryClient = new QueryClient();
 
 function App() {
   useEffect(() => {
-    setupAdminAccount().catch(console.error);
+    // setupAdminAccount().catch(console.error);
   }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <WagmiConfig config={config}>
+      <WagmiConfig client={client}>
         <ContractProvider>
           <BrowserRouter>
             <div className="flex flex-col min-h-screen">
@@ -93,4 +92,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;

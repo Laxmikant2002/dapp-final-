@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useContract } from '../context/ContractContext';
-import { checkIfUserVoted } from '../services/firebaseService';
 
 const VoteVerification = ({ electionId }) => {
   const { contract, account } = useContract();
@@ -16,27 +15,19 @@ const VoteVerification = ({ electionId }) => {
 
     setLoading(true);
     try {
-      // Check Firebase vote status
-      const firebaseVoteExists = await checkIfUserVoted(electionId, account);
-      
       // Check blockchain vote status
       const blockchainVoteExists = await contract.checkVoting(electionId, account);
       
       const result = {
         walletAddress: account,
-        firebaseStatus: firebaseVoteExists ? 'Vote found' : 'No vote found',
         blockchainStatus: blockchainVoteExists ? 'Vote found' : 'No vote found',
         timestamp: new Date().toLocaleString(),
-        match: firebaseVoteExists === blockchainVoteExists
+        match: true
       };
 
       setVerificationResult(result);
       
-      if (!result.match) {
-        toast.error('Vote status mismatch between Firebase and blockchain!');
-      } else {
-        toast.success('Vote verification completed');
-      }
+      toast.success('Vote verification completed');
     } catch (error) {
       console.error('Error verifying vote:', error);
       toast.error('Failed to verify vote: ' + error.message);
@@ -63,12 +54,6 @@ const VoteVerification = ({ electionId }) => {
             <h3 className="font-semibold">Verification Results:</h3>
             <p className="text-sm text-gray-600">
               <strong>Wallet:</strong> {verificationResult.walletAddress}
-            </p>
-            <p className="text-sm text-gray-600">
-              <strong>Firebase:</strong>{' '}
-              <span className={verificationResult.firebaseStatus === 'Vote found' ? 'text-green-600' : 'text-red-600'}>
-                {verificationResult.firebaseStatus}
-              </span>
             </p>
             <p className="text-sm text-gray-600">
               <strong>Blockchain:</strong>{' '}

@@ -1,23 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../hooks/firebase/useAuth';
-import { db } from '../../config/firebase';
-import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { useContract } from '../../context/ContractContext';
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
+  const { contract } = useContract();
   const [elections, setElections] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchElections = async () => {
       try {
-        const electionsRef = collection(db, 'elections');
-        const snapshot = await getDocs(electionsRef);
-        const electionsData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
+        if (!contract) return;
+        // Get elections from blockchain
+        const electionCount = await contract.getElectionCount();
+        const electionPromises = [];
+        
+        for (let i = 0; i < electionCount; i++) {
+          electionPromises.push(contract.getElection(i));
+        }
+        
+        const electionsData = await Promise.all(electionPromises);
+        const formattedElections = electionsData.map((election, index) => ({
+          id: index,
+          name: election.name,
+          description: election.description,
+          isActive: election.isActive
         }));
-        setElections(electionsData);
+        
+        setElections(formattedElections);
       } catch (error) {
         console.error('Error fetching elections:', error);
       } finally {
@@ -26,14 +35,14 @@ const AdminDashboard = () => {
     };
 
     fetchElections();
-  }, []);
+  }, [contract]);
 
   const handleToggleElection = async (electionId, currentStatus) => {
     try {
-      const electionRef = doc(db, 'elections', electionId);
-      await updateDoc(electionRef, {
-        isActive: !currentStatus
-      });
+      if (!contract) return;
+      
+      const tx = await contract.toggleElection(electionId);
+      await tx.wait();
       
       setElections(prevElections => 
         prevElections.map(election => 

@@ -4,7 +4,7 @@
   "description": "Blockchain-based Voting System",
   "main": "index.js",
   "scripts": {
-    "start": "node scripts/start.js",
+    "start": "cd client && npm start",
     "install:all": "npm install && cd client && npm install",
     "client": "cd client && npm start",
     "dev": "hardhat node",

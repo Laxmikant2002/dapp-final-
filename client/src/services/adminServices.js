@@ -1,6 +1,3 @@
-import { auth, db } from '../config/firebase';
-import { doc, getDoc } from 'firebase/firestore';
-
 // List of authorized admin emails
 const AUTHORIZED_ADMINS = [
   'admin@voting.com',
@@ -28,32 +25,21 @@ export const adminLogin = async (email, password) => {
     throw new Error('Invalid credentials');
   }
 
+  // Store admin token in localStorage
+  localStorage.setItem('adminToken', 'dev-token');
+
   // Return admin data
   return {
     email,
     role: 'admin',
-    token: 'demo-token' // In production, this would be a real JWT token
+    token: 'dev-token'
   };
 };
 
 export const verifyAdminToken = async () => {
   try {
     const token = localStorage.getItem('adminToken');
-    const currentUser = auth.currentUser;
-
-    if (!token || !currentUser) {
-      return false;
-    }
-
-    // Verify token format
-    const [prefix, uid] = token.split('-');
-    if (prefix !== 'admin' || uid !== currentUser.uid) {
-      return false;
-    }
-
-    // Verify admin status in Firestore
-    const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-    return userDoc.exists() && userDoc.data().isAdmin === true;
+    return token === 'dev-token';
   } catch (error) {
     console.error('Admin verification error:', error);
     return false;

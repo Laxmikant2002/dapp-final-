@@ -6,9 +6,7 @@ import Header from '../components/Header';
 import { FaUserTie, FaUsers } from 'react-icons/fa';
 import { useAccount } from 'wagmi';
 import { toast } from 'sonner';
-import { checkVoterStatus } from '../services/firebaseService';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { useContract } from '../context/ContractContext';
 
 const RoleSelectionModal = ({ onClose, onSelect }) => {
   return (
@@ -84,6 +82,7 @@ const Home = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { address: accountAddress, isConnected: isConnectedWallet } = useAccount();
+  const { contract } = useContract();
 
   const features = [
     {
@@ -134,39 +133,29 @@ const Home = () => {
 
   useEffect(() => {
     const checkAndRedirect = async () => {
-      if (isConnectedWallet && accountAddress) {
+      if (isConnectedWallet && accountAddress && contract) {
         try {
-          // Check if user is an admin
-          const adminQuery = query(
-            collection(db, 'users'),
-            where('ethAddress', '==', accountAddress),
-            where('isAdmin', '==', true)
-          );
-          const adminSnapshot = await getDocs(adminQuery);
+          // Check if user is an admin (for demo, we'll use localStorage)
+          const isAdmin = localStorage.getItem('adminToken') === 'dev-token';
           
-          if (!adminSnapshot.empty) {
+          if (isAdmin) {
             // User is an admin, redirect to admin dashboard
             navigate('/admin/dashboard');
             return;
           }
 
-          // Check voter status
-          const voterStatus = await checkVoterStatus(accountAddress);
-          
-          if (voterStatus.status === 'approved') {
-            // Get the stored path from sessionStorage
-            const redirectPath = sessionStorage.getItem('redirectPath');
-            if (redirectPath) {
-              sessionStorage.removeItem('redirectPath');
-              navigate(redirectPath);
-              return;
-            }
-            // If no redirect path, go to elections page
-            navigate('/elections');
-          } else {
-            // Show role selection modal for non-admin and non-approved voters
-            setShowRoleModal(true);
+          // For demo purposes, we'll assume all connected wallets are valid voters
+          // In a real application, you would check the voter status on the blockchain
+          const redirectPath = sessionStorage.getItem('redirectPath');
+          if (redirectPath) {
+            sessionStorage.removeItem('redirectPath');
+            navigate(redirectPath);
+            return;
           }
+          
+          // If no redirect path, show role selection
+          setShowRoleModal(true);
+          
         } catch (error) {
           console.error('Error checking user status:', error);
           toast.error('Error checking user status. Please try again.');
@@ -175,7 +164,7 @@ const Home = () => {
     };
 
     checkAndRedirect();
-  }, [accountAddress, isConnectedWallet, navigate]);
+  }, [accountAddress, isConnectedWallet, navigate, contract]);
 
   const handleRoleSelection = (role) => {
     setShowRoleModal(false);
