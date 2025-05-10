@@ -35,6 +35,7 @@
   "dependencies": {
     "dotenv": "^16.4.7",
     "framer-motion": "^12.6.3",
+    "json2csv": "^6.0.0-alpha.2",
     "react-webcam": "^7.2.0"
   },
   "jest": {

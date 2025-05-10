@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { FaChartBar, FaUsers, FaCalendarAlt } from 'react-icons/fa';
 import { useContract } from '../context/ContractContext';
 import { toast } from 'react-toastify';
+import { Parser } from 'json2csv';
 
 const Results = () => {
   const { id } = useParams();
@@ -80,6 +81,27 @@ const Results = () => {
     return colors[index % colors.length];
   };
 
+  const handleExportCSV = () => {
+    if (!results || !results.candidates) return;
+    const fields = [
+      { label: 'Candidate Name', value: 'name' },
+      { label: 'Party', value: 'party' },
+      { label: 'Vote Count', value: 'voteCount' },
+      { label: 'Percentage', value: 'percentage' }
+    ];
+    const parser = new Parser({ fields });
+    const csv = parser.parse(results.candidates);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${results.title || 'election-results'}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -121,6 +143,12 @@ const Results = () => {
           <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 sm:mt-4">
             {results.title}
           </p>
+          <button
+            onClick={handleExportCSV}
+            className="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            Export Results as CSV
+          </button>
         </div>
 
         {/* Overall Stats */}

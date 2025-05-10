@@ -1,12 +1,12 @@
 const hre = require("hardhat");
 
 async function main() {
-  // Deploy the Vote contract
-  const Vote = await hre.ethers.getContractFactory("Vote");
-  const vote = await Vote.deploy();
-  await vote.deployed();
+  // Deploy the Voting contract
+  const Voting = await hre.ethers.getContractFactory("Voting");
+  const voting = await Voting.deploy();
+  await voting.deployed();
 
-  console.log("Vote contract deployed to:", vote.address);
+  console.log("Voting contract deployed to:", voting.address);
 
   // Save the contract address and ABI
   const fs = require("fs");
@@ -19,14 +19,14 @@ async function main() {
   // Save the contract address
   fs.writeFileSync(
     contractsDir + "/contract-address.json",
-    JSON.stringify({ Vote: vote.address }, undefined, 2)
+    JSON.stringify({ Voting: voting.address }, undefined, 2)
   );
 
   // Save the contract artifacts
-  const artifactPath = __dirname + "/../artifacts/contracts/Vote.sol/Vote.json";
+  const artifactPath = __dirname + "/../artifacts/contracts/Voting.sol/Voting.json";
   const contractArtifact = require(artifactPath);
   fs.writeFileSync(
-    contractsDir + "/Vote.json",
+    contractsDir + "/Voting.json",
     JSON.stringify(contractArtifact, null, 2)
   );
 }

@@ -2,11 +2,11 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "D:\\BOOKS\\Voting-Dapp-master\\contracts\\Vote.sol": {
-      "lastModificationDate": 1744830368957,
+      "lastModificationDate": 1746292615700,
       "contentHash": "8867c69696fab45bc6e03caa8cbf461e",
       "sourceName": "contracts/Vote.sol",
       "solcConfig": {
-        "version": "0.8.0",
+        "version": "0.8.19",
         "settings": {
           "optimizer": {
             "enabled": false,

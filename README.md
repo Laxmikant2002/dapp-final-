@@ -1,6 +1,6 @@
 # Blockchain-based Voting System
 
-A decentralized voting application built with React, Hardhat, and Firebase.
+A decentralized voting application built with React and Hardhat.
 
 ## Prerequisites
 
@@ -27,16 +27,6 @@ npm install --legacy-peer-deps
 cd ..
 ```
 
-3. Install Firebase CLI globally:
-```bash
-npm install -g firebase-tools
-```
-
-4. Login to Firebase:
-```bash
-firebase login
-```
-
 ## Running the Application
 
 1. Start the local blockchain (Hardhat):
@@ -49,18 +39,7 @@ npx hardhat node
 npx hardhat run scripts/deploy.js --network localhost
 ```
 
-3. Start Firebase emulators (in a new terminal):
-```bash
-firebase emulators:start
-```
-The emulators will run on the following ports:
-- Firebase UI: http://localhost:4000
-- Authentication: http://localhost:9099
-- Firestore: http://localhost:8082
-- Functions: http://localhost:5001
-- Hosting: http://localhost:5000
-
-4. Start the React client (in a new terminal):
+3. Start the React client (in a new terminal):
 ```bash
 cd client
 npm start
@@ -78,6 +57,61 @@ npm start
    - Private keys are displayed when you start the Hardhat node
    - Example: 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
+---
+
+## Sepolia Network: HTTP vs WebSocket Endpoints
+
+### 1. Which to Choose: HTTP or WebSocket?
+
+- **HTTP (https://eth-sepolia.g.alchemy.com/v2/...)**  
+  Use this for most contract deployments, reads, and transactions.  
+  It is the standard for Hardhat, Ethers.js, and most frontend DApps.
+
+- **WebSocket (wss://eth-sepolia.g.alchemy.com/v2/...)**  
+  Use this if you need to listen for real-time blockchain events (e.g., contract events, new blocks) in your frontend or backend.  
+  Not required for basic contract interaction, deployment, or most DApp features.
+
+**For your Voting DApp, use the HTTP endpoint unless you specifically need real-time event subscriptions.**
+
+### 2. How to Connect in Hardhat
+
+In your `.env` file:
+```
+SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/XkEY4OdJqhiZlqUwpyebLxlTH1v5JA1p
+SEPOLIA_PRIVATE_KEY=your_private_key
+```
+
+In `hardhat.config.js`:
+```js
+sepolia: {
+  url: process.env.SEPOLIA_RPC_URL,
+  accounts: [process.env.SEPOLIA_PRIVATE_KEY]
+}
+```
+
+### 3. How to Connect in Ethers.js (Frontend/Backend)
+
+```js
+import { ethers } from "ethers";
+
+// HTTP provider (recommended for most use cases)
+const provider = new ethers.providers.JsonRpcProvider("https://eth-sepolia.g.alchemy.com/v2/XkEY4OdJqhiZlqUwpyebLxlTH1v5JA1p");
+
+// WebSocket provider (only if you need real-time events)
+const wsProvider = new ethers.providers.WebSocketProvider("wss://eth-sepolia.g.alchemy.com/v2/XkEY4OdJqhiZlqUwpyebLxlTH1v5JA1p");
+```
+
+### Summary Table
+
+| Use Case                | Endpoint to Use | Example Code/Config                                      |
+|-------------------------|-----------------|----------------------------------------------------------|
+| Deploy/Read/Write       | HTTP            | `url: "https://eth-sepolia.g.alchemy.com/v2/..."`        |
+| Listen to Events        | WebSocket       | `wss://eth-sepolia.g.alchemy.com/v2/...`                 |
+
+**For your current system, use the HTTP endpoint for Hardhat and your frontend unless you need real-time event listening.**
+
+---
+
 ## Application Features
 
 ### Admin Role
@@ -93,6 +127,18 @@ npm start
 - Cast votes
 - Verify votes
 
+### Results Export
+- On the Results page, you can now export election results as a CSV file using the "Export Results as CSV" button. This uses the `json2csv` library for formatting.
+
+## Components Using Contract Calls
+- `ContractContext.jsx`: Handles all blockchain connection logic and provides contract instance.
+- `Register.jsx`: Registers a voter using the smart contract.
+- `Elections.jsx`: Fetches and displays elections from the contract.
+- `CandidateDetails.jsx`: Fetches candidate details and allows voting via the contract.
+- `Verify.jsx`: Verifies a vote using the contract.
+- `Results.jsx`: Fetches and displays results from the contract, and now supports CSV export.
+- `AdminDashboard.jsx`: Admin actions (create, end election, etc.) via contract calls.
+
 ## Project Structure
 
 ```
@@ -102,7 +148,7 @@ Voting-Dapp-master/
 │   │   ├── components/    # React components
 │   │   ├── pages/        # Page components
 │   │   ├── contracts/    # Deployed contract artifacts
-│   │   └── services/     # Firebase and contract services
+│   │   └── services/     # Contract services
 ├── contracts/             # Smart contracts
 │   └── Vote.sol          # Main voting contract
 ├── scripts/              # Deployment scripts
@@ -118,14 +164,6 @@ The main contract (`Vote.sol`) includes the following features:
 - Result calculation
 - Emergency stop functionality
 - Feedback submission
-
-## Firebase Integration
-
-The application uses Firebase for:
-- User authentication
-- Admin management
-- Voter registration approval
-- Data persistence
 
 ## Development
 
@@ -144,23 +182,6 @@ npx hardhat test
    - Ensure you're connected to the correct network (Localhost 8545)
    - Check if the Hardhat node is running
    - Verify the contract is deployed correctly
-
-3. If Firebase emulators fail to start:
-   - Ensure Firebase CLI is installed globally
-   - Check if you're logged in to Firebase
-   - If ports are in use, modify the ports in firebase.json:
-     ```json
-     "emulators": {
-       "auth": { "port": 9099 },
-       "firestore": { "port": 8082 },
-       "functions": { "port": 5001 },
-       "hosting": { "port": 5000 },
-       "ui": { "port": 4000 }
-     }
-     ```
-   - Check if any other services are using these ports
-   - Try running `netstat -ano | findstr :<port>` to check port usage
-   - Restart your computer if ports remain blocked
 
 ## License
 
