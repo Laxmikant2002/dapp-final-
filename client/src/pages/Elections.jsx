@@ -1,31 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useContract } from '../context/ContractContext';
 import { Link } from 'react-router-dom';
 import { FaSearch, FaCalendarAlt, FaUsers, FaVoteYea } from 'react-icons/fa';
 import { toast } from 'sonner';
 
-// Demo elections data (this will be replaced with actual data from your state management)
-const demoElections = [
-  {
-    id: 1,
-    name: "Student Council Election 2024",
-    description: "Annual election for student council positions",
-    candidates: [
-      { id: 1, name: "John Smith", votes: 150 },
-      { id: 2, name: "Sarah Johnson", votes: 120 },
-      { id: 3, name: "Michael Brown", votes: 80 }
-    ],
-    startTime: new Date("2024-03-01").getTime(),
-    endTime: new Date("2024-03-15").getTime(),
-    status: 'active',
-    totalVotes: 350,
-    registeredVoters: 500
-  }
-];
-
 const Elections = () => {
+  const { contract } = useContract();
+  const [elections, setElections] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [elections, setElections] = useState(demoElections);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchElections = async () => {
+      if (!contract) return;
+      const count = await contract.getElectionCount();
+      const arr = [];
+      for (let i = 0; i < count; i++) arr.push(await contract.getElection(i));
+      setElections(arr.map((e, i) => ({ ...e, id: i })));
+    };
+    fetchElections();
+  }, [contract]);
 
   const filteredElections = elections.filter(election =>
     election.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

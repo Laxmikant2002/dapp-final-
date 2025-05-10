@@ -50,7 +50,7 @@ const Register = () => {
       await tx.wait();
       
       toast.success('Registration successful!');
-      navigate('/elections');
+      navigate('/pages/Elections');
     } catch (error) {
       console.error('Registration error:', error);
       toast.error(error.message || 'Registration failed. Please try again.');
@@ -170,10 +170,20 @@ const Register = () => {
               </button>
             </div>
           </form>
+
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={() => navigate('/elections')}
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Bypass
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-export default Register; 
+export default Register;

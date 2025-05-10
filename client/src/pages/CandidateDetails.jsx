@@ -8,53 +8,36 @@ import VoteFeedback from '../components/VoteFeedback';
 
 const CandidateDetails = () => {
   const { electionId } = useParams();
-  const { isConnected } = useContext(ContractContext);
+  const { isConnected, contract } = useContext(ContractContext);
   const [loading, setLoading] = useState(true);
   const [voting, setVoting] = useState(false);
   const [election, setElection] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
 
-  // Mock data for demonstration - replace with actual contract calls
   useEffect(() => {
     const fetchElectionDetails = async () => {
       try {
-        // TODO: Replace with actual contract call
-        const mockElection = {
+        if (!contract) {
+          throw new Error('Contract not initialized');
+        }
+
+        const electionData = await contract.getElection(electionId);
+        const formattedElection = {
           id: electionId,
-          name: "2025 Presidential Election",
-          description: "Cast your vote for the next president",
-          endDate: new Date(Date.now() + 199 * 24 * 60 * 60 * 1000),
-          candidates: [
-            {
-              id: 1,
-              fullName: "John Anderson",
-              partyName: "Democratic Party",
-              partyType: "Democratic Party",
-              description: "Former State Governor with 20 years of public service experience.",
-              image: "https://example.com/john-anderson.jpg",
-              partySymbol: "https://example.com/democratic-party.png"
-            },
-            {
-              id: 2,
-              fullName: "Sarah Mitchell",
-              partyName: "Republican Party",
-              partyType: "Republican Party",
-              description: "Current Senator with extensive economic policy background.",
-              image: "https://example.com/sarah-mitchell.jpg",
-              partySymbol: "https://example.com/republican-party.png"
-            },
-            {
-              id: 3,
-              fullName: "Michael Roberts",
-              partyName: "Independent",
-              partyType: "Independent",
-              description: "Successful business leader and philanthropist.",
-              image: "https://example.com/michael-roberts.jpg",
-              partySymbol: "https://example.com/independent-party.png"
-            }
-          ]
+          name: electionData.name,
+          description: electionData.description,
+          endDate: new Date(electionData.endDate * 1000),
+          candidates: electionData.candidates.map((candidate, index) => ({
+            id: index,
+            fullName: candidate.fullName,
+            partyName: candidate.partyName,
+            partyType: candidate.partyType,
+            description: candidate.description,
+            image: candidate.image,
+            partySymbol: candidate.partySymbol,
+          })),
         };
-        setElection(mockElection);
+        setElection(formattedElection);
       } catch (error) {
         console.error('Error fetching election details:', error);
         toast.error('Failed to load election details');
@@ -66,7 +49,7 @@ const CandidateDetails = () => {
     if (isConnected) {
       fetchElectionDetails();
     }
-  }, [electionId, isConnected]);
+  }, [electionId, isConnected, contract]);
 
   const getPartyBadgeColor = (partyType) => {
     switch (partyType) {
@@ -89,12 +72,18 @@ const CandidateDetails = () => {
 
     setVoting(true);
     try {
-      // TODO: Replace with actual contract call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      if (!contract) {
+        throw new Error('Contract not initialized');
+      }
+
+      const tx = await contract.vote(electionId, candidateId);
+      await tx.wait();
+      toast.success('Vote cast successfully!');
       setShowFeedback(true);
     } catch (error) {
       console.error('Error casting vote:', error);
       toast.error('Failed to cast vote');
+    } finally {
       setVoting(false);
     }
   };
@@ -235,4 +224,4 @@ const CandidateDetails = () => {
   );
 };
 
-export default CandidateDetails; 
+export default CandidateDetails;

@@ -1,17 +1,115 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { FaChartBar, FaUsers, FaCalendarAlt } from 'react-icons/fa';
-import { demoResults } from '../data/demoData';
+import { useContract } from '../context/ContractContext';
+import { toast } from 'react-toastify';
 
 const Results = () => {
   const { id } = useParams();
-  // Filter results based on id if needed, for now using demo data
-  const results = id ? { ...demoResults, title: `${demoResults.title} #${id}` } : demoResults;
+  const { contract } = useContract();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [results, setResults] = useState(null);
+
+  useEffect(() => {
+    const fetchResults = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Fetch election details
+        const election = await contract.getElection(id);
+        
+        // Fetch results for each candidate
+        const candidates = await Promise.all(
+          election.candidates.map(async (candidateId) => {
+            const candidate = await contract.getCandidate(candidateId);
+            const voteCount = await contract.getVoteCount(id, candidateId);
+            return {
+              id: candidateId,
+              name: candidate.name,
+              party: candidate.party,
+              voteCount: voteCount.toNumber(),
+            };
+          })
+        );
+
+        // Calculate total votes and percentages
+        const totalVotes = candidates.reduce((sum, c) => sum + c.voteCount, 0);
+        const candidatesWithPercentages = candidates.map(c => ({
+          ...c,
+          percentage: totalVotes > 0 ? `${((c.voteCount / totalVotes) * 100).toFixed(1)}%` : '0%'
+        }));
+
+        // Calculate turnout (assuming we have total registered voters from contract)
+        const totalVoters = await contract.getTotalVoters();
+        const turnout = `${((totalVotes / totalVoters.toNumber()) * 100).toFixed(1)}%`;
+
+        setResults({
+          title: election.title,
+          totalVotes,
+          turnout,
+          candidates: candidatesWithPercentages,
+          timeline: [
+            {
+              date: election.startTime.toNumber() * 1000,
+              description: 'Election Started'
+            },
+            {
+              date: election.endTime.toNumber() * 1000,
+              description: 'Election Ended'
+            }
+          ]
+        });
+      } catch (err) {
+        console.error('Error fetching results:', err);
+        setError('Failed to load election results');
+        toast.error('Failed to load election results');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (contract && id) {
+      fetchResults();
+    }
+  }, [contract, id]);
 
   const getCandidateColor = (index) => {
     const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-yellow-500'];
     return colors[index % colors.length];
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading election results...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!results) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">No results found</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

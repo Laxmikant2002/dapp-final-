@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConnectWallet from '../components/ConnectWallet';
-import Header from '../components/Header';
 import { FaUserTie, FaUsers } from 'react-icons/fa';
 import { useAccount } from 'wagmi';
 import { toast } from 'sonner';
@@ -16,6 +15,9 @@ const RoleSelectionModal = ({ onClose, onSelect }) => {
       exit={{ opacity: 0 }}
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="role-selection-title"
     >
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
@@ -24,24 +26,25 @@ const RoleSelectionModal = ({ onClose, onSelect }) => {
         className="bg-white rounded-xl p-6 w-full max-w-md m-4"
         onClick={e => e.stopPropagation()}
       >
-        <h2 className="text-2xl font-bold text-gray-900 mb-4 text-center">Choose Your Role</h2>
+        <h2 id="role-selection-title" className="text-2xl font-bold text-gray-900 mb-4 text-center">Choose Your Role</h2>
         <p className="text-gray-600 mb-6 text-center">Select how you want to participate in the voting system</p>
         
         <div className="space-y-4">
           <button
             onClick={() => onSelect('voter')}
             className="w-full flex items-center justify-between p-4 border rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-colors group"
+            aria-label="Select Voter Role"
           >
             <div className="flex items-center">
               <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center group-hover:bg-indigo-200">
-                <FaUsers className="w-6 h-6 text-indigo-600" />
+                <FaUsers className="w-6 h-6 text-indigo-600" aria-hidden="true" />
               </div>
               <div className="ml-4">
                 <h3 className="text-lg font-medium text-gray-900">Voter</h3>
                 <p className="text-sm text-gray-500">Register and cast your vote in elections</p>
               </div>
             </div>
-            <svg className="w-5 h-5 text-gray-400 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-gray-400 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
             </svg>
           </button>
@@ -49,17 +52,18 @@ const RoleSelectionModal = ({ onClose, onSelect }) => {
           <button
             onClick={() => onSelect('admin')}
             className="w-full flex items-center justify-between p-4 border rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors group"
+            aria-label="Select Admin Role"
           >
             <div className="flex items-center">
               <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200">
-                <FaUserTie className="w-6 h-6 text-purple-600" />
+                <FaUserTie className="w-6 h-6 text-purple-600" aria-hidden="true" />
               </div>
               <div className="ml-4">
                 <h3 className="text-lg font-medium text-gray-900">Admin</h3>
                 <p className="text-sm text-gray-500">Login to manage elections and voters</p>
               </div>
             </div>
-            <svg className="w-5 h-5 text-gray-400 group-hover:text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-gray-400 group-hover:text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
             </svg>
           </button>
@@ -68,6 +72,7 @@ const RoleSelectionModal = ({ onClose, onSelect }) => {
         <button
           onClick={onClose}
           className="mt-6 w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+          aria-label="Cancel role selection"
         >
           Cancel
         </button>
@@ -79,17 +84,18 @@ const RoleSelectionModal = ({ onClose, onSelect }) => {
 const Home = () => {
   const [activeFeature, setActiveFeature] = useState(0);
   const [showRoleModal, setShowRoleModal] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { address: accountAddress, isConnected: isConnectedWallet } = useAccount();
   const { contract } = useContract();
 
-  const features = [
+  const features = useMemo(() => [
     {
       title: 'Secure Voting',
       description: 'Every vote is recorded on the blockchain, ensuring complete transparency and preventing tampering.',
       icon: (
-        <svg className="w-12 h-12 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <svg className="w-12 h-12 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
         </svg>
       )
@@ -98,7 +104,7 @@ const Home = () => {
       title: 'Voter Verification',
       description: 'Verify your vote on the blockchain for complete transparency and trust in the voting process.',
       icon: (
-        <svg className="w-12 h-12 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <svg className="w-12 h-12 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       )
@@ -107,12 +113,12 @@ const Home = () => {
       title: 'Real-time Results',
       description: 'View election results in real-time as votes are cast and recorded on the blockchain.',
       icon: (
-        <svg className="w-12 h-12 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <svg className="w-12 h-12 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
       )
     }
-  ];
+  ], []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -122,54 +128,66 @@ const Home = () => {
   }, [features.length]);
 
   useEffect(() => {
-    // Check for redirect message
     const message = location.state?.message;
     if (message) {
       toast.error(message);
-      // Clear the message from location state
       window.history.replaceState({}, document.title);
     }
   }, [location]);
 
   useEffect(() => {
     const checkAndRedirect = async () => {
-      if (isConnectedWallet && accountAddress && contract) {
-        try {
-          // Check if user is an admin (for demo, we'll use localStorage)
-          const isAdmin = localStorage.getItem('adminToken') === 'dev-token';
-          
-          if (isAdmin) {
-            // User is an admin, redirect to admin dashboard
-            navigate('/admin/dashboard');
-            return;
-          }
+      if (!isConnectedWallet || !accountAddress || !contract) return;
 
-          // For demo purposes, we'll assume all connected wallets are valid voters
-          // In a real application, you would check the voter status on the blockchain
+      setIsChecking(true);
+      try {
+        // Check if user is an admin using blockchain
+        const isAdmin = await contract.isAdmin(accountAddress);
+        
+        if (isAdmin) {
+          navigate('/admin/dashboard');
+          return;
+        }
+
+        // Check if user is a registered voter
+        const isVoter = await contract.isRegisteredVoter(accountAddress);
+        
+        if (isVoter) {
           const redirectPath = sessionStorage.getItem('redirectPath');
-          if (redirectPath) {
+          if (redirectPath && redirectPath.startsWith('/')) {
             sessionStorage.removeItem('redirectPath');
             navigate(redirectPath);
             return;
           }
-          
-          // If no redirect path, show role selection
-          setShowRoleModal(true);
-          
-        } catch (error) {
-          console.error('Error checking user status:', error);
-          toast.error('Error checking user status. Please try again.');
+          navigate('/elections');
+          return;
         }
+
+        // If not a voter, show role selection
+        setShowRoleModal(true);
+      } catch (error) {
+        console.error('Error checking user status:', error);
+        toast.error('Error checking user status. Please try again.');
+      } finally {
+        setIsChecking(false);
       }
     };
 
     checkAndRedirect();
   }, [accountAddress, isConnectedWallet, navigate, contract]);
 
+  useEffect(() => {
+    if (isConnectedWallet && accountAddress) {
+      setShowRoleModal(true);
+    }
+  }, [isConnectedWallet, accountAddress]);
+
   const handleRoleSelection = (role) => {
     setShowRoleModal(false);
+    localStorage.setItem('userRole', role);
+    
     if (role === 'admin') {
-      navigate('/admin/login');
+      navigate('/login');
     } else {
       navigate('/register');
     }
@@ -177,8 +195,6 @@ const Home = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      <Header />
-      
       <main className="flex-grow">
         {/* Hero Section */}
         <section className="relative overflow-hidden">
@@ -204,6 +220,11 @@ const Home = () => {
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center lg:justify-start space-y-4 sm:space-y-0 sm:space-x-4">
                   {!isConnectedWallet && <ConnectWallet />}
+                  {isConnectedWallet && accountAddress && (
+                    <span className="text-sm text-gray-500">
+                      Connected: {accountAddress.slice(0, 6)}...{accountAddress.slice(-4)}
+                    </span>
+                  )}
                 </div>
               </motion.div>
               
@@ -464,7 +485,6 @@ const Home = () => {
         </div>
       </main>
 
-      {/* Role Selection Modal */}
       <AnimatePresence>
         {showRoleModal && (
           <RoleSelectionModal
@@ -473,6 +493,15 @@ const Home = () => {
           />
         )}
       </AnimatePresence>
+
+      {isChecking && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-4 rounded-lg shadow-lg">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <p className="mt-2 text-sm text-gray-600">Checking user status...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

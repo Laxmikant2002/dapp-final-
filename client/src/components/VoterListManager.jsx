@@ -15,11 +15,44 @@ const VoterListManager = ({ electionId }) => {
   const fetchVoters = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual contract call
+      // Mock data for testing
       await new Promise(resolve => setTimeout(resolve, 1000));
       setVoters([
-        { address: '0x1234...5678', registeredAt: new Date().toISOString() },
-        { address: '0x9876...4321', registeredAt: new Date().toISOString() }
+        { 
+          address: '0x1234...5678', 
+          registeredAt: new Date('2024-03-01T10:00:00').toISOString(),
+          name: 'John Doe',
+          email: 'john.doe@example.com',
+          status: 'Active'
+        },
+        { 
+          address: '0x9876...4321', 
+          registeredAt: new Date('2024-03-01T11:30:00').toISOString(),
+          name: 'Jane Smith',
+          email: 'jane.smith@example.com',
+          status: 'Active'
+        },
+        { 
+          address: '0xabcd...efgh', 
+          registeredAt: new Date('2024-03-02T09:15:00').toISOString(),
+          name: 'Mike Johnson',
+          email: 'mike.j@example.com',
+          status: 'Pending'
+        },
+        { 
+          address: '0x2468...1357', 
+          registeredAt: new Date('2024-03-02T14:20:00').toISOString(),
+          name: 'Sarah Wilson',
+          email: 'sarah.w@example.com',
+          status: 'Active'
+        },
+        { 
+          address: '0x1357...2468', 
+          registeredAt: new Date('2024-03-03T16:45:00').toISOString(),
+          name: 'David Brown',
+          email: 'david.b@example.com',
+          status: 'Inactive'
+        }
       ]);
     } catch (error) {
       console.error('Error fetching voters:', error);
@@ -235,10 +268,19 @@ const VoterListManager = ({ electionId }) => {
               <li key={voter.address} className="px-4 py-4 sm:px-6">
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
-                    <p className="text-sm font-medium text-gray-900">{voter.address}</p>
+                    <p className="text-sm font-medium text-gray-900">{voter.name}</p>
+                    <p className="text-sm text-gray-500">{voter.email}</p>
+                    <p className="text-sm text-gray-500">{voter.address}</p>
                     <p className="text-sm text-gray-500">
                       Registered on {new Date(voter.registeredAt).toLocaleDateString()}
                     </p>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      voter.status === 'Active' ? 'bg-green-100 text-green-800' :
+                      voter.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {voter.status}
+                    </span>
                   </div>
                   <button
                     type="button"

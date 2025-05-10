@@ -22,6 +22,10 @@ import VoteVerification from './pages/VoteVerification';
 import AdminDashboard from './pages/AdminDashboard';
 import PendingApproval from './pages/PendingApproval';
 import Login from './pages/Login';
+import Results from './pages/Results';
+import Vote from './pages/Vote';
+import AdminLogin from './pages/AdminLogin';
+import Verify from './pages/Verify';
 
 const queryClient = new QueryClient();
 
@@ -44,16 +48,13 @@ function App() {
                   <Route path="/register" element={<Register />} />
                   <Route path="/pending-approval" element={<PendingApproval />} />
                   <Route path="/login" element={<Login />} />
+                  <Route path="/admin/login" element={<AdminLogin />} />
+                  <Route path="/verify" element={<Verify />} />
 
                   {/* Protected Voter Routes */}
-                  <Route
-                    path="/elections"
-                    element={
-                      <ProtectedRoute requiresVoter={true}>
-                        <Elections />
-                      </ProtectedRoute>
-                    }
-                  />
+                  <Route path="/elections" element={<Elections />} />
+                  <Route path="/results" element={<Results />} />
+                  <Route path="/vote/:electionId" element={<Vote />} />
                   <Route
                     path="/candidate/:id"
                     element={
