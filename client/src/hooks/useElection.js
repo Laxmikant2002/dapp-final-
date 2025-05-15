@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useContract } from '../useContract';
+import { useContract } from '../../context/ContractContext';
 
 export const useElection = (electionId) => {
   const [election, setElection] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const contract = useContract();
+  const { contract } = useContract();
 
   useEffect(() => {
     const fetchElection = async () => {
@@ -13,16 +13,15 @@ export const useElection = (electionId) => {
         setLoading(true);
         if (!contract || !electionId) return;
 
-        const electionData = await contract.methods.getElectionDetails(electionId).call();
+        const electionData = await contract.getElection(electionId);
+        
         setElection({
           id: electionId,
-          name: electionData.name,
-          description: electionData.description,
-          startTime: new Date(electionData.startTime * 1000),
-          endTime: new Date(electionData.endTime * 1000),
-          status: electionData.status,
-          candidates: electionData.candidates,
-          totalVotes: electionData.totalVotes
+          name: electionData[1],
+          description: electionData[2],
+          endTime: new Date(electionData[3] * 1000),
+          isActive: electionData[4],
+          totalVotes: electionData[5].toString()
         });
       } catch (err) {
         setError(err);
@@ -38,16 +37,19 @@ export const useElection = (electionId) => {
   const refreshElection = async () => {
     setLoading(true);
     try {
-      const electionData = await contract.methods.getElectionDetails(electionId).call();
+      if (!contract || !electionId) {
+        throw new Error("Contract or election ID not available");
+      }
+      
+      const electionData = await contract.getElection(electionId);
+      
       setElection({
         id: electionId,
-        name: electionData.name,
-        description: electionData.description,
-        startTime: new Date(electionData.startTime * 1000),
-        endTime: new Date(electionData.endTime * 1000),
-        status: electionData.status,
-        candidates: electionData.candidates,
-        totalVotes: electionData.totalVotes
+        name: electionData[1],
+        description: electionData[2],
+        endTime: new Date(electionData[3] * 1000),
+        isActive: electionData[4],
+        totalVotes: electionData[5].toString()
       });
     } catch (err) {
       setError(err);

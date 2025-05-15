@@ -17,9 +17,6 @@ module.exports = {
       accounts: process.env.SEPOLIA_PRIVATE_KEY ? [process.env.SEPOLIA_PRIVATE_KEY] : []
     }
   },
-  paths: {
-    artifacts: "./client/src/artifacts",
-  },
   mocha: {
     timeout: 40000
   }

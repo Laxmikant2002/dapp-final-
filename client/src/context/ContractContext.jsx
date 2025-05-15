@@ -1,8 +1,15 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { toast } from 'react-hot-toast';
-import Vote from '../contracts/Vote.json';
+import Voting from '../contracts/Voting.json';
 import contractAddress from '../contracts/contract-address.json';
+
+// Define supported network IDs
+const SUPPORTED_NETWORKS = {
+  1337: 'Hardhat Local',
+  31337: 'Hardhat',
+  11155111: 'Sepolia Testnet'
+};
 
 const ContractContext = createContext();
 
@@ -25,129 +32,185 @@ export const ContractProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [networkError, setNetworkError] = useState(null);
   const [chainId, setChainId] = useState(null);
+  const [networkName, setNetworkName] = useState(null);
+  const [isCorrectNetwork, setIsCorrectNetwork] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isVoter, setIsVoter] = useState(false);
 
-  // Initialize provider
+  // Helper to check if network is supported
+  const checkNetwork = (networkId) => {
+    const isSupported = Object.keys(SUPPORTED_NETWORKS).includes(networkId.toString());
+    setIsCorrectNetwork(isSupported);
+    setNetworkName(isSupported ? SUPPORTED_NETWORKS[networkId] : `Unsupported Network (${networkId})`);
+    return isSupported;
+  };
+
+  // Helper to initialize contract
+  const initContract = async (provider, account) => {
+    if (!provider || !account) {
+      setContract(null);
+      return;
+    }
+
+    try {
+      // Get network information
+      const network = await provider.getNetwork();
+      setChainId(network.chainId);
+      
+      // Check if on supported network
+      const isSupported = checkNetwork(network.chainId);
+      if (!isSupported) {
+        setNetworkError(`Please switch to a supported network (Hardhat Local or Sepolia Testnet)`);
+        return;
+      }
+
+      const signer = provider.getSigner();
+      setSigner(signer);
+      const votingContract = new ethers.Contract(
+        contractAddress.Voting,
+        Voting.abi,
+        signer
+      );
+      setContract(votingContract);
+      setIsConnected(true);
+      setNetworkError(null);
+      
+      // Check roles here
+      checkRoles(votingContract, account);
+    } catch (err) {
+      setContract(null);
+      setNetworkError('Failed to initialize contract');
+      setIsConnected(false);
+    }
+  };
+
+  // Listen for wallet/network changes and re-init contract
   useEffect(() => {
-    const init = async () => {
-      try {
-        if (typeof window.ethereum !== 'undefined') {
-          const provider = new ethers.providers.Web3Provider(window.ethereum);
-          setProvider(provider);
+    let eth = window.ethereum;
+    if (!eth) {
+      setNetworkError('Please install MetaMask to use this application');
+      return;
+    }
+    const provider = new ethers.providers.Web3Provider(eth);
+    setProvider(provider);
 
-          // Get the network
-          const network = await provider.getNetwork();
-          setChainId(network.chainId);
-
-          // Listen for network changes
-          window.ethereum.on('chainChanged', (chainId) => {
-            setChainId(parseInt(chainId, 16));
-          });
-
-          // Listen for account changes
-          window.ethereum.on('accountsChanged', (accounts) => {
-            if (accounts.length === 0) {
-              disconnectWallet();
-            } else {
-              setAccount(accounts[0]);
-            }
-          });
-
-          // Check if already connected
-          const accounts = await provider.listAccounts();
-          if (accounts.length > 0) {
-            setAccount(accounts[0]);
-            const signer = provider.getSigner();
-            setSigner(signer);
-            setIsConnected(true);
-          }
-        } else {
-          setNetworkError('Please install MetaMask to use this application');
-        }
-      } catch (error) {
-        console.error('Provider initialization error:', error);
-        setNetworkError('Failed to initialize Web3 provider');
+    const handleAccountsChanged = (accounts) => {
+      if (accounts.length === 0) {
+        setAccount('');
+        setIsConnected(false);
+        setContract(null);
+      } else {
+        setAccount(accounts[0]);
+        setIsConnected(true);
+        initContract(provider, accounts[0]);
       }
     };
 
-    init();
+    const handleChainChanged = (_chainId) => {
+      const chainIdNum = parseInt(_chainId, 16);
+      setChainId(chainIdNum);
+      checkNetwork(chainIdNum);
+      
+      // Re-init contract on network change
+      provider.listAccounts().then(accounts => {
+        if (accounts.length > 0) {
+          setAccount(accounts[0]);
+          setIsConnected(true);
+          initContract(provider, accounts[0]);
+        } else {
+          setAccount('');
+          setIsConnected(false);
+          setContract(null);
+        }
+      });
+    };
+
+    eth.on('accountsChanged', handleAccountsChanged);
+    eth.on('chainChanged', handleChainChanged);
+
+    // Initial connect
+    provider.listAccounts().then(accounts => {
+      if (accounts.length > 0) {
+        setAccount(accounts[0]);
+        setIsConnected(true);
+        initContract(provider, accounts[0]);
+      }
+    });
+
+    provider.getNetwork().then(net => {
+      setChainId(net.chainId);
+      checkNetwork(net.chainId);
+    });
 
     return () => {
-      if (window.ethereum) {
-        window.ethereum.removeAllListeners();
+      if (eth.removeListener) {
+        eth.removeListener('accountsChanged', handleAccountsChanged);
+        eth.removeListener('chainChanged', handleChainChanged);
       }
     };
+    // eslint-disable-next-line
   }, []);
 
-  const switchToHardhat = async () => {
+  // Check roles helper
+  const checkRoles = async (contractInstance, address) => {
+    if (!contractInstance || !address) return;
     try {
+      const [adminStatus, voterStatus] = await Promise.all([
+        contractInstance.isAdmin(address),
+        contractInstance.isVoter(address)
+      ]);
+      setIsAdmin(adminStatus);
+      setIsVoter(voterStatus);
+    } catch (error) {
+      setIsAdmin(false);
+      setIsVoter(false);
+    }
+  };
+
+  // Helper to switch networks
+  const switchNetwork = async (chainId) => {
+    try {
+      if (!window.ethereum) throw new Error('MetaMask is not installed');
+      
       await window.ethereum.request({
-        method: 'wallet_addEthereumChain',
-        params: [{
-          chainId: '0x7A69', // 31337 in hex
-          chainName: 'Hardhat Local',
-          nativeCurrency: {
-            name: 'Ethereum',
-            symbol: 'ETH',
-            decimals: 18
-          },
-          rpcUrls: ['http://127.0.0.1:8545']
-        }]
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: `0x${chainId.toString(16)}` }],
       });
+      
       return true;
     } catch (error) {
-      console.error('Error switching to Hardhat network:', error);
+      console.error('Error switching network:', error);
       return false;
     }
   };
 
   const connectWallet = async () => {
+    setIsLoading(true);
+    setNetworkError(null);
     try {
-      setIsLoading(true);
-      setNetworkError(null);
-
-      if (!window.ethereum) {
-        throw new Error('Please install MetaMask to use this application');
-      }
-
-      // Request account access
-      const accounts = await window.ethereum.request({ 
-        method: 'eth_requestAccounts' 
-      });
-      
-      const account = accounts[0];
-      setAccount(account);
-
-      // Get the current network
-      const network = await provider.getNetwork();
-      setChainId(network.chainId);
-
-      // If not on Hardhat network, try to switch
-      if (network.chainId !== 31337) {
-        const switched = await switchToHardhat();
-        if (!switched) {
-          throw new Error(
-            'Please switch to the Hardhat network (chainId: 31337) in your MetaMask wallet. ' +
-            'Make sure your local Hardhat node is running.'
-          );
-        }
-      }
-
-      // Get signer
-      const signer = provider.getSigner();
-      setSigner(signer);
-
-      // Initialize contract
-      const contract = new ethers.Contract(
-        contractAddress.Vote,
-        Vote.abi,
-        signer
-      );
-      setContract(contract);
-
+      if (!window.ethereum) throw new Error('Please install MetaMask to use this application');
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      setAccount(accounts[0]);
       setIsConnected(true);
+      
+      if (provider) {
+        // Get current network
+        const network = await provider.getNetwork();
+        const isSupported = checkNetwork(network.chainId);
+        
+        if (!isSupported) {
+          // Try to switch to Hardhat local network
+          const switched = await switchNetwork(1337);
+          if (!switched) {
+            toast.error('Please switch to a supported network in MetaMask');
+          }
+        }
+        
+        await initContract(provider, accounts[0]);
+      }
+      
       toast.success('Wallet connected successfully');
     } catch (error) {
-      console.error('Connection error:', error);
       setNetworkError(error.message);
       toast.error(`Connection error: ${error.message}`);
     } finally {
@@ -155,12 +218,14 @@ export const ContractProvider = ({ children }) => {
     }
   };
 
-  const disconnectWallet = async () => {
+  const disconnectWallet = () => {
     setAccount('');
     setSigner(null);
     setContract(null);
     setIsConnected(false);
     setNetworkError(null);
+    setIsAdmin(false);
+    setIsVoter(false);
     toast.success('Wallet disconnected');
   };
 
@@ -175,8 +240,13 @@ export const ContractProvider = ({ children }) => {
         isLoading,
         networkError,
         chainId,
+        networkName,
+        isCorrectNetwork,
+        isAdmin,
+        isVoter,
         connectWallet,
-        disconnectWallet
+        disconnectWallet,
+        switchNetwork
       }}
     >
       {children}

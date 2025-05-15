@@ -1,188 +1,171 @@
-# Blockchain-based Voting System
+# Blockchain-based Voting DApp
 
-A decentralized voting application built with React and Hardhat.
+A decentralized voting application built with Ethereum smart contracts and React.
+
+## Features
+
+- Secure and transparent voting system
+- Admin dashboard for election management
+- Real-time election results
+- Voter registration and verification
+- MetaMask integration
+- Responsive design
+
+## Tech Stack
+
+- **Smart Contracts**: Solidity, Hardhat
+- **Frontend**: React, TailwindCSS
+- **Web3**: Ethers.js, MetaMask
+- **Testing**: Hardhat Network
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
-- MetaMask browser extension
+- Node.js (v14+)
+- MetaMask Browser Extension
 - Git
 
-## Installation
+## Quick Start
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd Voting-Dapp-master
+git clone https://github.com/yourusername/voting-dapp.git
+cd voting-dapp
 ```
 
 2. Install dependencies:
 ```bash
-# Install root dependencies
-npm install --legacy-peer-deps
-
-# Install client dependencies
-cd client
-npm install --legacy-peer-deps
-cd ..
+npm run install:all
 ```
 
-## Running the Application
-
-1. Start the local blockchain (Hardhat):
+3. Start local blockchain:
 ```bash
 npx hardhat node
 ```
 
-2. Deploy the smart contract (in a new terminal):
+4. Deploy contracts:
 ```bash
 npx hardhat run scripts/deploy.js --network localhost
 ```
 
-3. Start the React client (in a new terminal):
+5. Start frontend:
 ```bash
-cd client
-npm start
+npm run client
 ```
-
-## MetaMask Setup
-
-1. Open MetaMask and add a new network:
-   - Network Name: Localhost 8545
-   - RPC URL: http://localhost:8545
-   - Chain ID: 31337
-   - Currency Symbol: ETH
-
-2. Import one of the test accounts provided by Hardhat:
-   - Private keys are displayed when you start the Hardhat node
-   - Example: 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-
----
-
-## Sepolia Network: HTTP vs WebSocket Endpoints
-
-### 1. Which to Choose: HTTP or WebSocket?
-
-- **HTTP (https://eth-sepolia.g.alchemy.com/v2/...)**  
-  Use this for most contract deployments, reads, and transactions.  
-  It is the standard for Hardhat, Ethers.js, and most frontend DApps.
-
-- **WebSocket (wss://eth-sepolia.g.alchemy.com/v2/...)**  
-  Use this if you need to listen for real-time blockchain events (e.g., contract events, new blocks) in your frontend or backend.  
-  Not required for basic contract interaction, deployment, or most DApp features.
-
-**For your Voting DApp, use the HTTP endpoint unless you specifically need real-time event subscriptions.**
-
-### 2. How to Connect in Hardhat
-
-In your `.env` file:
-```
-SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/XkEY4OdJqhiZlqUwpyebLxlTH1v5JA1p
-SEPOLIA_PRIVATE_KEY=your_private_key
-```
-
-In `hardhat.config.js`:
-```js
-sepolia: {
-  url: process.env.SEPOLIA_RPC_URL,
-  accounts: [process.env.SEPOLIA_PRIVATE_KEY]
-}
-```
-
-### 3. How to Connect in Ethers.js (Frontend/Backend)
-
-```js
-import { ethers } from "ethers";
-
-// HTTP provider (recommended for most use cases)
-const provider = new ethers.providers.JsonRpcProvider("https://eth-sepolia.g.alchemy.com/v2/XkEY4OdJqhiZlqUwpyebLxlTH1v5JA1p");
-
-// WebSocket provider (only if you need real-time events)
-const wsProvider = new ethers.providers.WebSocketProvider("wss://eth-sepolia.g.alchemy.com/v2/XkEY4OdJqhiZlqUwpyebLxlTH1v5JA1p");
-```
-
-### Summary Table
-
-| Use Case                | Endpoint to Use | Example Code/Config                                      |
-|-------------------------|-----------------|----------------------------------------------------------|
-| Deploy/Read/Write       | HTTP            | `url: "https://eth-sepolia.g.alchemy.com/v2/..."`        |
-| Listen to Events        | WebSocket       | `wss://eth-sepolia.g.alchemy.com/v2/...`                 |
-
-**For your current system, use the HTTP endpoint for Hardhat and your frontend unless you need real-time event listening.**
-
----
-
-## Application Features
-
-### Admin Role
-- Login with admin credentials
-- Create and manage elections
-- View election results
-- Approve voter registrations
-
-### Voter Role
-- Connect wallet
-- Register as a voter
-- View active elections
-- Cast votes
-- Verify votes
-
-### Results Export
-- On the Results page, you can now export election results as a CSV file using the "Export Results as CSV" button. This uses the `json2csv` library for formatting.
-
-## Components Using Contract Calls
-- `ContractContext.jsx`: Handles all blockchain connection logic and provides contract instance.
-- `Register.jsx`: Registers a voter using the smart contract.
-- `Elections.jsx`: Fetches and displays elections from the contract.
-- `CandidateDetails.jsx`: Fetches candidate details and allows voting via the contract.
-- `Verify.jsx`: Verifies a vote using the contract.
-- `Results.jsx`: Fetches and displays results from the contract, and now supports CSV export.
-- `AdminDashboard.jsx`: Admin actions (create, end election, etc.) via contract calls.
 
 ## Project Structure
 
 ```
-Voting-Dapp-master/
-├── client/                 # React frontend
-│   ├── src/
-│   │   ├── components/    # React components
-│   │   ├── pages/        # Page components
-│   │   ├── contracts/    # Deployed contract artifacts
-│   │   └── services/     # Contract services
-├── contracts/             # Smart contracts
-│   └── Vote.sol          # Main voting contract
-├── scripts/              # Deployment scripts
-└── test/                # Contract tests
+voting-dapp/
+├── contracts/           # Smart contracts
+├── client/             # Frontend application
+├── scripts/            # Deployment scripts
+├── test/              # Contract tests
+└── docs/              # Documentation
 ```
 
-## Smart Contract
+## Smart Contracts
 
-The main contract (`Vote.sol`) includes the following features:
+### Vote.sol
+Main voting contract with features:
+- Election creation and management
 - Voter registration
-- Candidate registration
-- Voting mechanism
-- Result calculation
-- Emergency stop functionality
-- Feedback submission
+- Vote casting
+- Results calculation
 
-## Development
+## Frontend Components
 
-To run tests:
+- **AdminDashboard**: Election management
+- **Elections**: List active elections
+- **CandidateDetails**: Candidate information and voting
+- **Results**: Election results display
+
+## Testing
+
+### Local Development Testing
+
+1. Start Hardhat Network:
+```bash
+npx hardhat node
+```
+
+2. Configure MetaMask:
+- Network Name: Hardhat Local
+- RPC URL: http://127.0.0.1:8545/
+- Chain ID: 31337
+- Currency Symbol: ETH
+
+3. Import Test Accounts:
+- Admin: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+- Voter: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
+
+4. Run Contract Tests:
 ```bash
 npx hardhat test
 ```
 
-## Troubleshooting
+5. Test Frontend:
+```bash
+cd client
+npm test
+```
 
-1. If you encounter dependency issues:
-   - Use `--legacy-peer-deps` flag with npm install
-   - Clear npm cache: `npm cache clean --force`
+### End-to-End Testing
 
-2. If MetaMask connection fails:
-   - Ensure you're connected to the correct network (Localhost 8545)
-   - Check if the Hardhat node is running
-   - Verify the contract is deployed correctly
+1. Admin Flow:
+- Connect admin account
+- Create election
+- Add candidates
+- Monitor results
+- End election
+
+2. Voter Flow:
+- Connect voter account
+- Register as voter
+- View elections
+- Cast vote
+- Verify vote
+
+3. Edge Cases:
+- Unregistered account voting
+- Voting after election end
+- Double voting attempt
+- Network disconnection
+- Invalid candidate selection
+
+## Deployment
+
+### Local Deployment
+1. Start Hardhat node
+2. Deploy contracts
+3. Update frontend configuration
+4. Test all functionalities
+
+### Testnet Deployment
+1. Configure environment variables
+2. Deploy to testnet
+3. Verify contract
+4. Update frontend
+
+See [deployment guide](docs/deployment-details.md) for detailed instructions.
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
 ## License
 
-This project is licensed under the MIT License.
+MIT License - see LICENSE file for details
+
+## Support
+
+For support, email support@votingdapp.com or open an issue.
+
+## Acknowledgments
+
+- Hardhat team
+- Ethereum community
+- React team

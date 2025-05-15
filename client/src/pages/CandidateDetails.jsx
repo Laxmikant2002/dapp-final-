@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ContractContext } from '../context/ContractContext';
 import Header from '../components/Header';
@@ -8,11 +8,13 @@ import VoteFeedback from '../components/VoteFeedback';
 
 const CandidateDetails = () => {
   const { electionId } = useParams();
-  const { isConnected, contract } = useContext(ContractContext);
+  const { isConnected, contract, account } = useContext(ContractContext);
   const [loading, setLoading] = useState(true);
   const [voting, setVoting] = useState(false);
   const [election, setElection] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [transactionLoading, setTransactionLoading] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchElectionDetails = async () => {
@@ -65,26 +67,63 @@ const CandidateDetails = () => {
   };
 
   const handleVote = async (candidateId) => {
+    try {
+      if (!account) {
+        toast.error('Please connect your wallet first');
+        return;
+      }
+
+      // Check if user is a registered voter
+      const isRegisteredVoter = await contract.isRegisteredVoter(account);
+      if (!isRegisteredVoter) {
+        toast.error('You are not a registered voter. Please contact an admin to register you.');
+        return;
+      }
+
+      // Check if user has already voted
+      const hasVoted = await contract.hasVoted(electionId, account);
+      if (hasVoted) {
+        toast.error('You have already voted in this election');
+        return;
+      }
+
+      setTransactionLoading(true);
+      const tx = await contract.castVote(electionId, candidateId);
+      await tx.wait();
+      
+      toast.success('Vote cast successfully!');
+      // Refresh election data
+      fetchElectionData();
+    } catch (error) {
+      console.error('Error casting vote:', error);
+      toast.error(error.message || 'Failed to cast vote');
+    } finally {
+      setTransactionLoading(false);
+    }
+  };
+
+  const fetchElectionData = async () => {
     if (!isConnected) {
       toast.error('Please connect your wallet first');
+      navigate('/');
       return;
     }
 
-    setVoting(true);
     try {
-      if (!contract) {
-        throw new Error('Contract not initialized');
-      }
-
-      const tx = await contract.vote(electionId, candidateId);
-      await tx.wait();
-      toast.success('Vote cast successfully!');
-      setShowFeedback(true);
+      // Add election data fetching logic here
+      setElection({
+        id: electionId,
+        title: 'Sample Election',
+        candidates: [
+          { id: 1, name: 'Candidate 1', votes: 100 },
+          { id: 2, name: 'Candidate 2', votes: 75 }
+        ]
+      });
     } catch (error) {
-      console.error('Error casting vote:', error);
-      toast.error('Failed to cast vote');
+      console.error('Error fetching election:', error);
+      toast.error('Failed to load election data');
     } finally {
-      setVoting(false);
+      setLoading(false);
     }
   };
 
@@ -174,12 +213,12 @@ const CandidateDetails = () => {
                 <p className="mt-4 text-gray-600">{candidate.description}</p>
                 <button
                   onClick={() => handleVote(candidate.id)}
-                  disabled={voting}
+                  disabled={transactionLoading}
                   className={`mt-6 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
-                    voting ? 'opacity-50 cursor-not-allowed' : ''
+                    transactionLoading ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                 >
-                  {voting ? (
+                  {transactionLoading ? (
                     <>
                       <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

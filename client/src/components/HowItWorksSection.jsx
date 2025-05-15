@@ -1,65 +1,64 @@
 import React from 'react';
+import { motion } from 'framer-motion';
+import { FaShieldAlt, FaVoteYea, FaChartPie } from 'react-icons/fa';
 
 const HowItWorksSection = () => {
-  const steps = [
-    {
-      number: '01',
-      title: 'Connect Your Wallet',
-      description: 'Start by connecting your Ethereum wallet to our platform. This is your digital identity for voting.'
-    },
-    {
-      number: '02',
-      title: 'Verify Your Identity',
-      description: 'Complete the verification process to ensure you are an eligible voter for the election.'
-    },
-    {
-      number: '03',
-      title: 'Cast Your Vote',
-      description: 'Select your preferred candidate and submit your vote. Your choice is encrypted and recorded on the blockchain.'
-    },
-    {
-      number: '04',
-      title: 'View Results',
-      description: 'After the election period ends, view the results in real-time as they are verified on the blockchain.'
-    }
-  ];
-
   return (
     <section className="py-16 bg-white">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            How It Works
-          </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Our voting process is simple, secure, and transparent. Here's how you can participate in the election.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {steps.map((step, index) => (
-            <div 
-              key={index}
-              className="relative"
-            >
-              <div className="bg-blue-50 rounded-lg p-6 h-full">
-                <div className="text-4xl font-bold text-blue-600 mb-4">
-                  {step.number}
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  {step.title}
-                </h3>
-                <p className="text-gray-600">
-                  {step.description}
-                </p>
-              </div>
-              {index < steps.length - 1 && (
-                <div className="hidden lg:block absolute top-1/2 right-0 transform translate-x-1/2 -translate-y-1/2">
-                  <i className="fas fa-arrow-right text-blue-600 text-xl"></i>
-                </div>
-              )}
+        <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">How It Works</h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            whileHover={{ y: -5 }}
+            className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-8 text-center shadow-sm hover:shadow-md transition-all"
+          >
+            <div className="bg-indigo-600 w-10 h-10 mx-auto mb-6 rounded-full flex items-center justify-center text-white font-bold">
+              1
             </div>
-          ))}
+            <div className="bg-indigo-100 w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center transform transition-transform group-hover:scale-110">
+              <FaShieldAlt className="w-8 h-8 text-indigo-600" />
+            </div>
+            <h3 className="text-xl font-semibold mb-3">Connect Wallet</h3>
+            <p className="text-gray-600">Connect your Ethereum wallet to access the voting platform securely.</p>
+          </motion.div>
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+            whileHover={{ y: -5 }}
+            className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-8 text-center shadow-sm hover:shadow-md transition-all"
+          >
+            <div className="bg-indigo-600 w-10 h-10 mx-auto mb-6 rounded-full flex items-center justify-center text-white font-bold">
+              2
+            </div>
+            <div className="bg-indigo-100 w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center transform transition-transform group-hover:scale-110">
+              <FaVoteYea className="w-8 h-8 text-indigo-600" />
+            </div>
+            <h3 className="text-xl font-semibold mb-3">Cast Your Vote</h3>
+            <p className="text-gray-600">Browse active elections, review candidates, and cast your vote securely on the blockchain.</p>
+          </motion.div>
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+            whileHover={{ y: -5 }}
+            className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-8 text-center shadow-sm hover:shadow-md transition-all"
+          >
+            <div className="bg-indigo-600 w-10 h-10 mx-auto mb-6 rounded-full flex items-center justify-center text-white font-bold">
+              3
+            </div>
+            <div className="bg-indigo-100 w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center transform transition-transform group-hover:scale-110">
+              <FaChartPie className="w-8 h-8 text-indigo-600" />
+            </div>
+            <h3 className="text-xl font-semibold mb-3">View Results</h3>
+            <p className="text-gray-600">See real-time election results and verify that your vote was recorded correctly.</p>
+          </motion.div>
         </div>
       </div>
     </section>

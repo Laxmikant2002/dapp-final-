@@ -1,4 +1,6 @@
 const hre = require("hardhat");
+const fs = require("fs");
+const path = require("path");
 
 async function main() {
   // Deploy the Voting contract
@@ -9,26 +11,33 @@ async function main() {
   console.log("Voting contract deployed to:", voting.address);
 
   // Save the contract address and ABI
-  const fs = require("fs");
-  const contractsDir = __dirname + "/../client/src/contracts";
+  const contractsDir = path.join(__dirname, "..", "client", "src", "contracts");
 
   if (!fs.existsSync(contractsDir)) {
-    fs.mkdirSync(contractsDir);
+    fs.mkdirSync(contractsDir, { recursive: true });
   }
 
   // Save the contract address
   fs.writeFileSync(
-    contractsDir + "/contract-address.json",
+    path.join(contractsDir, "contract-address.json"),
     JSON.stringify({ Voting: voting.address }, undefined, 2)
   );
 
-  // Save the contract artifacts
-  const artifactPath = __dirname + "/../artifacts/contracts/Voting.sol/Voting.json";
+  // Get the contract artifact
+  const artifactPath = path.join(__dirname, "..", "artifacts", "contracts", "Voting.sol", "Voting.json");
+  
+  if (!fs.existsSync(artifactPath)) {
+    console.error("Contract artifact not found at:", artifactPath);
+    process.exit(1);
+  }
+
   const contractArtifact = require(artifactPath);
   fs.writeFileSync(
-    contractsDir + "/Voting.json",
+    path.join(contractsDir, "Voting.json"),
     JSON.stringify(contractArtifact, null, 2)
   );
+
+  console.log("Contract artifacts saved successfully!");
 }
 
 main()

@@ -1,133 +1,110 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { FaChartBar, FaUsers, FaCalendarAlt } from 'react-icons/fa';
+import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useContract } from '../context/ContractContext';
-import { toast } from 'react-toastify';
-import { Parser } from 'json2csv';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Pie } from 'react-chartjs-2';
+import { FaSpinner, FaArrowLeft } from 'react-icons/fa';
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 const Results = () => {
-  const { id } = useParams();
+  const { electionId } = useParams();
+  const navigate = useNavigate();
   const { contract } = useContract();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [results, setResults] = useState(null);
+  const [election, setElection] = useState(null);
+  const [results, setResults] = useState([]);
 
   useEffect(() => {
     const fetchResults = async () => {
+      if (!contract || !electionId) return;
+      setLoading(true);
       try {
-        setLoading(true);
-        setError(null);
-        
         // Fetch election details
-        const election = await contract.getElection(id);
-        
-        // Fetch results for each candidate
-        const candidates = await Promise.all(
-          election.candidates.map(async (candidateId) => {
-            const candidate = await contract.getCandidate(candidateId);
-            const voteCount = await contract.getVoteCount(id, candidateId);
-            return {
-              id: candidateId,
-              name: candidate.name,
-              party: candidate.party,
-              voteCount: voteCount.toNumber(),
-            };
-          })
-        );
+        const [id, name, description, endTime, isActive, totalVotes] = await contract.getElection(electionId);
+        setElection({ id, name, description, endTime, isActive, totalVotes });
 
-        // Calculate total votes and percentages
-        const totalVotes = candidates.reduce((sum, c) => sum + c.voteCount, 0);
-        const candidatesWithPercentages = candidates.map(c => ({
-          ...c,
-          percentage: totalVotes > 0 ? `${((c.voteCount / totalVotes) * 100).toFixed(1)}%` : '0%'
-        }));
-
-        // Calculate turnout (assuming we have total registered voters from contract)
-        const totalVoters = await contract.getTotalVoters();
-        const turnout = `${((totalVotes / totalVoters.toNumber()) * 100).toFixed(1)}%`;
-
-        setResults({
-          title: election.title,
-          totalVotes,
-          turnout,
-          candidates: candidatesWithPercentages,
-          timeline: [
-            {
-              date: election.startTime.toNumber() * 1000,
-              description: 'Election Started'
-            },
-            {
-              date: election.endTime.toNumber() * 1000,
-              description: 'Election Ended'
-            }
-          ]
-        });
-      } catch (err) {
-        console.error('Error fetching results:', err);
-        setError('Failed to load election results');
-        toast.error('Failed to load election results');
+        // Fetch candidates and their votes
+        const candidates = await contract.getElectionCandidates(electionId);
+        setResults(candidates);
+      } catch (error) {
+        console.error('Error fetching results:', error);
+        toast.error('Failed to load election results. Please try again.');
       } finally {
         setLoading(false);
       }
     };
 
-    if (contract && id) {
-      fetchResults();
-    }
-  }, [contract, id]);
+    fetchResults();
+  }, [contract, electionId]);
 
-  const getCandidateColor = (index) => {
-    const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-yellow-500'];
-    return colors[index % colors.length];
+  const chartData = {
+    labels: results.map(candidate => candidate.name),
+    datasets: [
+      {
+        data: results.map(candidate => candidate.voteCount),
+        backgroundColor: [
+          '#FF6384',
+          '#36A2EB',
+          '#FFCE56',
+          '#4BC0C0',
+          '#9966FF',
+          '#FF9F40'
+        ],
+        borderWidth: 1,
+      },
+    ],
   };
 
-  const handleExportCSV = () => {
-    if (!results || !results.candidates) return;
-    const fields = [
-      { label: 'Candidate Name', value: 'name' },
-      { label: 'Party', value: 'party' },
-      { label: 'Vote Count', value: 'voteCount' },
-      { label: 'Percentage', value: 'percentage' }
-    ];
-    const parser = new Parser({ fields });
-    const csv = parser.parse(results.candidates);
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${results.title || 'election-results'}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+  const chartOptions = {
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          font: {
+            size: 14
+          }
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            const label = context.label || '';
+            const value = context.raw || 0;
+            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+            return `${label}: ${value} votes (${percentage}%)`;
+          }
+        }
+      }
+    },
+    maintainAspectRatio: false,
+    responsive: true
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading election results...</p>
-        </div>
+      <div className="flex items-center justify-center h-[calc(100vh-64px)]" role="status" aria-label="Loading results">
+        <FaSpinner className="animate-spin h-12 w-12 text-indigo-600" />
       </div>
     );
   }
 
-  if (error) {
+  if (!election) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-500">{error}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!results) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">No results found</p>
+      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto text-center">
+          <h1 className="text-3xl font-extrabold text-gray-900">Election Not Found</h1>
+          <p className="mt-2 text-gray-600">The requested election could not be found.</p>
+          <button
+            onClick={() => navigate('/elections')}
+            className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            aria-label="Return to elections list"
+          >
+            <FaArrowLeft className="mr-2" />
+            Back to Elections
+          </button>
         </div>
       </div>
     );
@@ -135,107 +112,51 @@ const Results = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
-            Election Results
-          </h1>
-          <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 sm:mt-4">
-            {results.title}
-          </p>
-          <button
-            onClick={handleExportCSV}
-            className="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-          >
-            Export Results as CSV
-          </button>
-        </div>
-
-        {/* Overall Stats */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-8">
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <div className="flex items-center">
-                <div className="flex-shrink-0 bg-indigo-500 rounded-md p-3">
-                  <FaChartBar className="h-6 w-6 text-white" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Total Votes
-                    </dt>
-                    <dd className="text-lg font-semibold text-gray-900">
-                      {results.totalVotes}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <div className="flex items-center">
-                <div className="flex-shrink-0 bg-green-500 rounded-md p-3">
-                  <FaUsers className="h-6 w-6 text-white" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Voter Turnout
-                    </dt>
-                    <dd className="text-lg font-semibold text-gray-900">
-                      {results.turnout}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <div className="flex items-center">
-                <div className="flex-shrink-0 bg-purple-500 rounded-md p-3">
-                  <FaCalendarAlt className="h-6 w-6 text-white" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Election Status
-                    </dt>
-                    <dd className="text-lg font-semibold text-gray-900">
-                      Completed
-                    </dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-extrabold text-gray-900">{election.name}</h1>
+          <p className="mt-2 text-gray-600">{election.description}</p>
+          <div className="mt-4 flex justify-center space-x-4">
+            <p className="text-sm text-gray-500">
+              Total Votes: {election.totalVotes.toString()}
+            </p>
+            <span
+              className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                election.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              }`}
+              role="status"
+              aria-label={`Election is ${election.isActive ? 'active' : 'ended'}`}
+            >
+              {election.isActive ? 'Active' : 'Ended'}
+            </span>
           </div>
         </div>
 
-        {/* Results Chart */}
-        <div className="bg-white shadow rounded-lg mb-8">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Vote Distribution
-            </h3>
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">Results</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="h-64">
+              <Pie data={chartData} options={chartOptions} />
+            </div>
             <div className="space-y-4">
-              {results.candidates.map((candidate, index) => (
-                <div key={candidate.id}>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-sm font-medium text-gray-700">
-                      {candidate.name} ({candidate.party})
-                    </span>
-                    <span className="text-sm font-medium text-gray-700">
-                      {candidate.voteCount} votes ({candidate.percentage})
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div
-                      className={`h-2.5 rounded-full ${getCandidateColor(index)}`}
-                      style={{ width: candidate.percentage }}
-                    />
+              {results.map((candidate) => (
+                <div key={candidate.id} className="border rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="text-lg font-medium">{candidate.name}</h3>
+                      <p className="text-sm text-gray-500">
+                        Party: {candidate.party}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Votes: {candidate.voteCount.toString()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-semibold">
+                        {election.totalVotes.toString() === '0' ? '0' : 
+                          ((parseInt(candidate.voteCount.toString()) / parseInt(election.totalVotes.toString())) * 100).toFixed(1)}%
+                      </p>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -243,48 +164,15 @@ const Results = () => {
           </div>
         </div>
 
-        {/* Timeline */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Election Timeline
-            </h3>
-            <div className="flow-root">
-              <ul className="-mb-8">
-                {results.timeline.map((event, index) => (
-                  <li key={index}>
-                    <div className="relative pb-8">
-                      {index !== results.timeline.length - 1 && (
-                        <span
-                          className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
-                          aria-hidden="true"
-                        />
-                      )}
-                      <div className="relative flex space-x-3">
-                        <div>
-                          <span className="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center ring-8 ring-white">
-                            <FaCalendarAlt className="h-4 w-4 text-white" />
-                          </span>
-                        </div>
-                        <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                          <div>
-                            <p className="text-sm text-gray-500">
-                              {event.description}
-                            </p>
-                          </div>
-                          <div className="text-right text-sm whitespace-nowrap text-gray-500">
-                            <time dateTime={event.date}>
-                              {new Date(event.date).toLocaleDateString()}
-                            </time>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+        <div className="mt-8 text-center">
+          <button
+            onClick={() => navigate('/elections')}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            aria-label="Return to elections list"
+          >
+            <FaArrowLeft className="mr-2" />
+            Back to Elections
+          </button>
         </div>
       </div>
     </div>
