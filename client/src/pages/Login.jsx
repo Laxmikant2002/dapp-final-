@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { 
   FaUserShield, 
-  FaSpinner, 
   FaCheckCircle, 
   FaTimesCircle, 
   FaArrowLeft, 
@@ -50,11 +49,12 @@ const Login = () => {
         setIsVerified(true);
         toast.success('Login successful!');
         
-        // Store login status in session storage (for demo only)
+        // Store login status and email in session storage
         sessionStorage.setItem('isAdminLoggedIn', 'true');
+        sessionStorage.setItem('adminEmail', email);
         
         setTimeout(() => {
-          navigate('/admin');
+          navigate('/admin', { state: { email } });
         }, 2000);
       } else {
         setVerificationError('Invalid email or password');

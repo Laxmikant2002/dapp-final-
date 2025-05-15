@@ -17,7 +17,6 @@ import Elections from './pages/Elections';
 import CandidateDetails from './pages/CandidateDetails';
 import VoteVerification from './pages/VoteVerification';
 import AdminDashboard from './pages/AdminDashboard';
-import PendingApproval from './pages/PendingApproval';
 import Login from './pages/Login';
 import Results from './pages/Results';
 import Vote from './pages/Vote';
@@ -38,7 +37,6 @@ function App() {
               {/* Public Routes */}
               <Route path="/" element={<Home />} />
               <Route path="/register" element={<Register />} />
-              <Route path="/pending-approval" element={<PendingApproval />} />
               <Route path="/login" element={<Login />} />
               <Route path="/verify-vote" element={<VoteVerification />} />
               <Route path="/voter/verify" element={<ProfileVerify />} />

@@ -107,8 +107,6 @@ const Home = () => {
 
   // Role checking logic - modified for demo flow
   useEffect(() => {
-    let mounted = true;
-
     const checkRoleAndRedirect = async () => {
       // Don't check if wallet not connected or contract not loaded
       if (!isConnected || !contract) {
@@ -153,10 +151,6 @@ const Home = () => {
     };
 
     checkRoleAndRedirect();
-
-    return () => {
-      mounted = false;
-    };
   }, [isAdmin, isVoter, isConnected, contract, contractLoading, hasCheckedRole, navigate]);
 
   // Handle role selection
@@ -170,15 +164,6 @@ const Home = () => {
       navigate('/voter/verify');
     }
   }, [navigate]);
-
-  // Handle role card click (for manual selection)
-  const handleRoleCardClick = useCallback((role) => {
-    if (!isConnected) {
-      toast.error('Please connect your wallet first');
-      return;
-    }
-    handleRoleSelection(role);
-  }, [isConnected, handleRoleSelection]);
 
   // Add network change listener
   useEffect(() => {
