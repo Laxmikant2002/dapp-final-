@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useContract } from '../context/ContractContext';
 import ConnectWallet from './ConnectWallet';
 import { toast } from 'react-hot-toast';
-import { FaBars, FaTimes, FaUserShield } from 'react-icons/fa';
+import { FaBars, FaTimes, FaUserShield, FaSignOutAlt } from 'react-icons/fa';
 
 const Header = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { isConnected, account, networkName, isCorrectNetwork, chainId, isAdmin, isVoter } = useContract();
   const [isOpen, setIsOpen] = useState(false);
+  const isAdminLoggedIn = sessionStorage.getItem('isAdminLoggedIn') === 'true';
   
   const isActive = (path) => location.pathname === path;
   
@@ -24,6 +26,12 @@ const Header = () => {
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
+  };
+  
+  const handleAdminLogout = () => {
+    sessionStorage.removeItem('isAdminLoggedIn');
+    toast.success('Logged out successfully');
+    navigate('/');
   };
 
   return (
@@ -74,8 +82,8 @@ const Header = () => {
               Verify Vote
             </Link>
             
-            {/* Admin Link - only shown for admin users */}
-            {isConnected && isAdmin && (
+            {/* Admin Link - only shown for logged in admins */}
+            {isAdminLoggedIn && (
               <Link
                 to="/admin"
                 className={`border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 px-1 pt-1 border-b-2 text-sm font-medium flex items-center ${
@@ -100,6 +108,18 @@ const Header = () => {
                 </span>
               </div>
             )}
+            
+            {/* Admin Logout Button (only shown when admin is logged in) */}
+            {isAdminLoggedIn && (
+              <button
+                onClick={handleAdminLogout}
+                className="hidden md:flex items-center text-sm text-gray-700 hover:text-red-600 transition-colors duration-150 ease-in-out"
+              >
+                <FaSignOutAlt className="mr-1" />
+                Admin Logout
+              </button>
+            )}
+            
             <ConnectWallet />
             
             {/* Mobile menu button */}
@@ -168,7 +188,7 @@ const Header = () => {
           </Link>
           
           {/* Admin Link in Mobile Menu */}
-          {isConnected && isAdmin && (
+          {isAdminLoggedIn && (
             <Link
               to="/admin"
               className={`block px-3 py-2 rounded-md text-base font-medium flex items-center ${
@@ -178,6 +198,19 @@ const Header = () => {
             >
               <FaUserShield className="mr-1" /> Admin
             </Link>
+          )}
+          
+          {/* Admin Logout in Mobile Menu */}
+          {isAdminLoggedIn && (
+            <button
+              onClick={() => {
+                handleAdminLogout();
+                setIsOpen(false);
+              }}
+              className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50 flex items-center"
+            >
+              <FaSignOutAlt className="mr-1" /> Admin Logout
+            </button>
           )}
           
           {/* Mobile wallet display */}
