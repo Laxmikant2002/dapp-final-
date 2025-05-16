@@ -1,132 +1,102 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useContract } from '../context/ContractContext';
 import { motion } from 'framer-motion';
-import { 
-  FiClock, 
-  FiCalendar, 
-  FiInfo, 
-  FiShield, 
-  FiCheckCircle,
-  FiArrowLeft,
-  FiHome,
-  FiUser
-} from 'react-icons/fi';
-import { FaSpinner, FaWallet } from 'react-icons/fa';
-import VoteFeedback from '../components/VoteFeedback';
-import { ethers } from 'ethers';
+import { FaSpinner, FaPlus, FaEdit, FaTrash, FaArrowLeft, FaClock } from 'react-icons/fa';
 
 const CandidateDetails = () => {
   const { electionId } = useParams();
-  const { isConnected, connectWallet, contract, account } = useContract();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [voting, setVoting] = useState(false);
   const [election, setElection] = useState(null);
   const [candidates, setCandidates] = useState([]);
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [isWalletConnected, setIsWalletConnected] = useState(false);
-  const [walletAccount, setWalletAccount] = useState('');
-  const [isWalletLoading, setIsWalletLoading] = useState(false);
-  const navigate = useNavigate();
-
-  // Check if MetaMask is connected on mount
-  useEffect(() => {
-    const checkWalletConnection = async () => {
-      if (window.ethereum) {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        
-        try {
-          const accounts = await provider.listAccounts();
-          if (accounts.length > 0) {
-            setIsWalletConnected(true);
-            setWalletAccount(accounts[0]);
-          }
-        } catch (error) {
-          console.error('Error checking wallet connection:', error);
-        }
-      }
-    };
-    
-    checkWalletConnection();
-  }, []);
+  const [showModal, setShowModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentCandidateId, setCurrentCandidateId] = useState(null);
+  const [newCandidate, setNewCandidate] = useState({
+    name: '',
+    party: '',
+    age: '',
+    gender: '',
+    voteCount: '0'
+  });
 
   useEffect(() => {
-    if ((isConnected || isWalletConnected) && contract && electionId) {
-      fetchElectionDetails();
-    }
-  }, [electionId, isConnected, isWalletConnected, contract]);
+    loadMockData();
+  }, [electionId]);
 
-  const fetchElectionDetails = async () => {
+  const loadMockData = () => {
     setLoading(true);
-    try {
-      if (!contract) {
-        throw new Error('Contract not initialized');
-      }
-
-      // Get election details using the contract's getElection function
-      const [id, name, description, startTime, endTime, isActive, totalVotes] = await contract.getElection(electionId);
-      
+    setTimeout(() => {
       setElection({
-        id: id.toString(),
-        name,
-        description,
-        startTime: Number(startTime) * 1000,
-        endTime: Number(endTime) * 1000,
-        isActive,
-        totalVotes: totalVotes.toString()
+        id: electionId,
+        name: "Student Council Election 2025",
+        description: "Vote for your student council representatives",
+        startTime: new Date('2025-05-15T17:15:00+05:30').getTime(),
+        endTime: new Date('2025-05-19T17:15:00+05:30').getTime(),
+        isActive: true,
+        totalVotes: "50"
       });
-
-      // Get candidates using the contract's getElectionCandidates function
-      const candidatesData = await contract.getElectionCandidates(electionId);
-      
-      setCandidates(candidatesData.map((candidate, index) => ({
-        id: index,
-        name: candidate.name,
-        party: candidate.party,
-        age: candidate.age.toString(),
-        gender: candidate.gender,
-        voteCount: candidate.voteCount.toString()
-      })));
-    } catch (error) {
-      console.error('Error fetching election details:', error);
-      toast.error('Failed to load election details');
-    } finally {
+      const storedCandidates = JSON.parse(localStorage.getItem(`candidates_${electionId}`)) || [
+        { id: 0, name: "Alice Johnson", party: "Independent", age: "21", gender: "Female", voteCount: "20" },
+        { id: 1, name: "Bob Smith", party: "Democratic Party", age: "22", gender: "Male", voteCount: "15" },
+        { id: 2, name: "Clara Lee", party: "Republican Party", age: "20", gender: "Female", voteCount: "15" }
+      ];
+      setCandidates(storedCandidates);
       setLoading(false);
-    }
+    }, 1000);
   };
 
-  const handleConnectWallet = async () => {
-    setIsWalletLoading(true);
-    try {
-      if (!window.ethereum) {
-        toast.error('MetaMask is not installed. Please install MetaMask to use this dApp.');
-        return;
-      }
-      
-      // Request account access
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      
-      if (accounts.length > 0) {
-        setIsWalletConnected(true);
-        setWalletAccount(accounts[0]);
-        toast.success('Wallet connected successfully!');
-        
-        // After connecting, fetch election details
-        fetchElectionDetails();
-      }
-    } catch (error) {
-      console.error('Error connecting wallet:', error);
-      
-      let errorMessage = 'Failed to connect wallet';
-      if (error.code === 4001) {
-        errorMessage = 'Wallet connection rejected by user';
-      }
-      
-      toast.error(errorMessage);
-    } finally {
-      setIsWalletLoading(false);
+  const handleAddCandidate = () => {
+    setIsEditing(false);
+    setNewCandidate({ name: '', party: '', age: '', gender: '', voteCount: '0' });
+    setShowModal(true);
+  };
+
+  const handleEditCandidate = (candidate) => {
+    setIsEditing(true);
+    setCurrentCandidateId(candidate.id);
+    setNewCandidate({ ...candidate });
+    setShowModal(true);
+  };
+
+  const handleDeleteCandidate = (candidateId) => {
+    const updatedCandidates = candidates.filter((candidate) => candidate.id !== candidateId);
+    setCandidates(updatedCandidates);
+    localStorage.setItem(`candidates_${electionId}`, JSON.stringify(updatedCandidates));
+    toast.success('Candidate deleted successfully!');
+  };
+
+  const handleCandidateSubmit = (e) => {
+    e.preventDefault();
+    if (!newCandidate.name || !newCandidate.party || !newCandidate.age || !newCandidate.gender) {
+      toast.error('Please fill in all candidate details');
+      return;
     }
+
+    let updatedCandidates;
+    if (isEditing) {
+      updatedCandidates = candidates.map((candidate) =>
+        candidate.id === currentCandidateId ? { ...newCandidate, id: currentCandidateId } : candidate
+      );
+      toast.success('Candidate updated successfully!');
+    } else {
+      updatedCandidates = [
+        ...candidates,
+        { ...newCandidate, id: candidates.length, voteCount: "0" }
+      ];
+      toast.success('Candidate added successfully!');
+    }
+
+    setCandidates(updatedCandidates);
+    localStorage.setItem(`candidates_${electionId}`, JSON.stringify(updatedCandidates));
+    setShowModal(false);
+    setNewCandidate({ name: '', party: '', age: '', gender: '', voteCount: '0' });
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewCandidate((prev) => ({ ...prev, [name]: value }));
   };
 
   const getPartyBadgeColor = (partyType) => {
@@ -141,119 +111,6 @@ const CandidateDetails = () => {
         return 'bg-indigo-100 text-indigo-800';
     }
   };
-
-  const handleVote = async (candidateId) => {
-    const currentAccount = isConnected ? account : walletAccount;
-    
-    if (!currentAccount) {
-      toast.error('Please connect your wallet first');
-      return;
-    }
-
-    if (!election.isActive) {
-      toast.error('This election has ended');
-      return;
-    }
-
-    try {
-      setVoting(true);
-      
-      // Check if user is a registered voter
-      const isRegisteredVoter = await contract.isVoter(currentAccount);
-      if (!isRegisteredVoter) {
-        toast.error('You are not a registered voter. Please contact an admin to register you.');
-        return;
-      }
-
-      // Check if user has already voted
-      const hasVoted = await contract.verifyVote(electionId, currentAccount);
-      if (hasVoted) {
-        toast.error('You have already voted in this election');
-        return;
-      }
-
-      const tx = await contract.castVote(electionId, candidateId);
-      
-      toast.promise(tx.wait(), {
-        loading: 'Casting your vote...',
-        success: 'Vote cast successfully!',
-        error: 'Failed to cast vote'
-      });
-      
-      await tx.wait();
-      
-      // Show feedback component
-      setShowFeedback(true);
-    } catch (error) {
-      console.error('Error casting vote:', error);
-      let errorMessage = 'Failed to cast vote';
-      
-      if (error.message.includes('already voted')) {
-        errorMessage = 'You have already voted in this election';
-      } else if (error.message.includes('not registered')) {
-        errorMessage = 'You are not registered as a voter';
-      } else if (error.message.includes('user rejected')) {
-        errorMessage = 'Transaction rejected by user';
-      } else if (error.message.includes('not active')) {
-        errorMessage = 'This election is not active';
-      }
-      
-      toast.error(errorMessage);
-    } finally {
-      setVoting(false);
-    }
-  };
-
-  // Wallet connection prompt component
-  const WalletConnectionPrompt = () => (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-xl shadow-lg p-8 max-w-md mx-auto my-12 text-center"
-    >
-      <FaWallet className="h-16 w-16 text-indigo-600 mx-auto mb-6" />
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">Connect Your Wallet</h2>
-      <p className="text-gray-600 mb-6">
-        Please connect your MetaMask wallet to view election details and cast your vote.
-      </p>
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={handleConnectWallet}
-        disabled={isWalletLoading}
-        className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center mx-auto"
-      >
-        {isWalletLoading ? (
-          <>
-            <FaSpinner className="animate-spin mr-2" />
-            Connecting...
-          </>
-        ) : (
-          <>
-            <FaWallet className="mr-2" />
-            Connect Wallet
-          </>
-        )}
-      </motion.button>
-    </motion.div>
-  );
-
-  if (showFeedback) {
-    return <VoteFeedback onClose={() => {
-      setShowFeedback(false);
-      fetchElectionDetails();
-    }} />;
-  }
-
-  if (!isConnected && !isWalletConnected) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-        <div className="container mx-auto px-4 py-12">
-          <WalletConnectionPrompt />
-        </div>
-      </div>
-    );
-  }
 
   if (loading) {
     return (
@@ -282,12 +139,12 @@ const CandidateDetails = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => navigate('/elections')}
+              onClick={() => navigate('/admin-dashboard')}
               className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              aria-label="Return to elections list"
+              aria-label="Return to admin dashboard"
             >
-              <FiArrowLeft className="mr-2" />
-              Back to Elections
+              <FaArrowLeft className="mr-2" />
+              Back to Dashboard
             </motion.button>
           </div>
         </div>
@@ -295,13 +152,10 @@ const CandidateDetails = () => {
     );
   }
 
-  // Calculate time remaining or check if ended
   const now = new Date();
   const endDate = new Date(election.endTime);
   const isEnded = !election.isActive || now > endDate;
   const timeRemaining = isEnded ? 0 : Math.max(0, Math.ceil((endDate - now) / (1000 * 60 * 60 * 24)));
-  
-  // Format date for display
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -312,36 +166,16 @@ const CandidateDetails = () => {
     });
   };
 
-  const displayAccount = isConnected ? account : walletAccount;
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         <div className="mb-6 flex justify-between items-center">
-          <Link to="/elections" className="flex items-center text-indigo-600 hover:text-indigo-800 transition-colors">
-            <FiArrowLeft className="h-5 w-5 mr-2" />
-            <span className="font-medium">Back to Elections</span>
+          <Link to="/admin-dashboard" className="flex items-center text-indigo-600 hover:text-indigo-800 transition-colors">
+            <FaArrowLeft className="h-5 w-5 mr-2" />
+            <span className="font-medium">Back to Dashboard</span>
           </Link>
-          
-          {(isConnected || isWalletConnected) && (
-            <div className="flex items-center">
-              <div className="mr-4 text-right hidden sm:block">
-                <p className="text-xs text-gray-500">Connected as:</p>
-                <p className="text-sm font-medium text-gray-900 font-mono">
-                  {displayAccount.substring(0, 6)}...{displayAccount.substring(displayAccount.length - 4)}
-                </p>
-              </div>
-              <Link 
-                to="/"
-                className="text-indigo-600 hover:text-indigo-800 transition-colors"
-              >
-                <FiHome className="h-5 w-5" />
-              </Link>
-            </div>
-          )}
         </div>
 
-        {/* Election Header */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -356,19 +190,12 @@ const CandidateDetails = () => {
               </p>
             </div>
             <div className="flex flex-col items-end mt-4 md:mt-0">
-              <div className={`px-3 py-1 rounded-full text-xs font-medium mb-2 ${
-                election.isActive 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-red-100 text-red-800'
-              }`}>
+              <div className={`px-3 py-1 rounded-full text-xs font-medium mb-2 ${election.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                 {election.isActive ? 'Active' : 'Ended'}
               </div>
               <div className="flex items-center text-indigo-600 text-sm">
-                <FiClock className="w-4 h-4 mr-1" />
-                {isEnded 
-                  ? <span>Election has ended</span>
-                  : <span>Ends in: {timeRemaining} day{timeRemaining !== 1 ? 's' : ''}</span>
-                }
+                <FaClock className="w-4 h-4 mr-1" />
+                {isEnded ? <span>Election has ended</span> : <span>Ends in: {timeRemaining} day{timeRemaining !== 1 ? 's' : ''}</span>}
               </div>
               <p className="text-xs text-gray-500 mt-1">
                 End date: {formatDate(election.endTime)}
@@ -377,89 +204,164 @@ const CandidateDetails = () => {
           </div>
         </motion.div>
 
-        {/* Candidates Grid */}
         <div className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">Candidates</h2>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {candidates.map((candidate) => (
-              <motion.div
-                key={candidate.id}
-                whileHover={{ scale: 1.02 }}
-                className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100"
-              >
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <h3 className="text-xl font-semibold text-gray-900">{candidate.name}</h3>
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getPartyBadgeColor(candidate.party)}`}>
-                      {candidate.party}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-2 mb-6">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <FiUser className="mr-2 text-indigo-500" />
-                      <span>Age: {candidate.age}</span>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <FiUser className="mr-2 text-indigo-500" />
-                      <span>Gender: {candidate.gender}</span>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <FiCheckCircle className="mr-2 text-indigo-500" />
-                      <span>Votes: {candidate.voteCount}</span>
-                    </div>
-                  </div>
-                  
-                  <motion.button
-                    whileHover={{ scale: election.isActive ? 1.05 : 1 }}
-                    whileTap={{ scale: election.isActive ? 0.95 : 1 }}
-                    onClick={() => election.isActive && handleVote(candidate.id)}
-                    disabled={voting || !election.isActive}
-                    className={`w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white ${
-                      election.isActive
-                        ? 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
-                        : 'bg-gray-400 cursor-not-allowed'
-                    } ${voting ? 'opacity-70 cursor-not-allowed' : ''}`}
-                  >
-                    {voting ? (
-                      <>
-                        <FaSpinner className="animate-spin mr-2 h-4 w-4" />
-                        Casting Vote...
-                      </>
-                    ) : (
-                      election.isActive ? `Vote for ${candidate.name}` : 'Election Ended'
-                    )}
-                  </motion.button>
-                </div>
-              </motion.div>
-            ))}
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold text-gray-800">Candidates</h2>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleAddCandidate}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg flex items-center"
+            >
+              <FaPlus className="mr-2" />
+              Add New Candidate
+            </motion.button>
           </div>
+          {candidates.length === 0 ? (
+            <div className="text-center py-8 bg-gray-50 rounded-lg">
+              <p className="text-gray-500 font-medium">No candidates found for this election.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {candidates.map((candidate) => (
+                <motion.div
+                  key={candidate.id}
+                  whileHover={{ scale: 1.02 }}
+                  className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100"
+                >
+                  <div className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <h3 className="text-xl font-semibold text-gray-900">{candidate.name}</h3>
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getPartyBadgeColor(candidate.party)}`}>
+                        {candidate.party}
+                      </span>
+                    </div>
+                    <div className="space-y-2 mb-6">
+                      <p className="text-sm text-gray-600">Age: {candidate.age}</p>
+                      <p className="text-sm text-gray-600">Gender: {candidate.gender}</p>
+                      <p className="text-sm text-gray-600">Votes: {candidate.voteCount}</p>
+                    </div>
+                    <div className="flex space-x-3">
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleEditCandidate(candidate)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center"
+                      >
+                        <FaEdit className="mr-2" />
+                        Edit
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleDeleteCandidate(candidate.id)}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg flex items-center"
+                      >
+                        <FaTrash className="mr-2" />
+                        Delete
+                      </motion.button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Information Box */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="bg-white rounded-xl shadow-lg p-6 mb-8"
         >
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Important Information</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Election Information</h3>
           <div className="space-y-4 text-sm text-gray-600">
-            <div className="flex items-start">
-              <FiInfo className="h-5 w-5 text-blue-500 mr-2 flex-shrink-0" />
-              <p>You can only vote once in this election. Your choice cannot be changed after submission.</p>
-            </div>
-            <div className="flex items-start">
-              <FiShield className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-              <p>Your vote is secured by blockchain technology and remains anonymous.</p>
-            </div>
-            <div className="flex items-start">
-              <FiCalendar className="h-5 w-5 text-orange-500 mr-2 flex-shrink-0" />
-              <p>The voting period ends on {formatDate(election.endTime)}.</p>
-            </div>
+            <p>The voting period started on {formatDate(election.startTime)}.</p>
+            <p>The voting period ends on {formatDate(election.endTime)}.</p>
           </div>
         </motion.div>
       </main>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full mx-4"
+          >
+            <h3 className="text-xl font-semibold text-gray-900 mb-6">{isEditing ? 'Edit Candidate' : 'Add New Candidate'}</h3>
+            <form onSubmit={handleCandidateSubmit}>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={newCandidate.name}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">Party</label>
+                <input
+                  type="text"
+                  name="party"
+                  value={newCandidate.party}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">Age</label>
+                <input
+                  type="number"
+                  name="age"
+                  value={newCandidate.age}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700">Gender</label>
+                <select
+                  name="gender"
+                  value={newCandidate.gender}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  required
+                >
+                  <option value="">Select Gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="flex justify-end space-x-3">
+                <motion.button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  type="submit"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                >
+                  {isEditing ? 'Update Candidate' : 'Add Candidate'}
+                </motion.button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

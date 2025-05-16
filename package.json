@@ -23,6 +23,7 @@
     "autoprefixer": "^10.4.21",
     "babel-jest": "^29.7.0",
     "chai": "^4.5.0",
+    "eslint-config-react-app": "^7.0.1",
     "ethereum-waffle": "^4.0.10",
     "ethers": "^5.8.0",
     "hardhat": "^2.24.0",
@@ -33,6 +34,7 @@
     "tailwindcss": "^4.1.4"
   },
   "dependencies": {
+    "@openzeppelin/contracts": "^4.9.5",
     "dotenv": "^16.4.7",
     "framer-motion": "^12.6.3",
     "json2csv": "^6.0.0-alpha.2",

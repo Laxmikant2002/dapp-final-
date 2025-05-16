@@ -22,11 +22,9 @@ const Results = () => {
   const [walletAccount, setWalletAccount] = useState('');
 
   useEffect(() => {
-    // Check if MetaMask is connected on mount
     const checkWalletConnection = async () => {
       if (window.ethereum) {
         const provider = new ethers.providers.Web3Provider(window.ethereum);
-        
         try {
           const accounts = await provider.listAccounts();
           if (accounts.length > 0) {
@@ -38,21 +36,43 @@ const Results = () => {
         }
       }
     };
-    
     checkWalletConnection();
   }, []);
 
   useEffect(() => {
     if ((isConnected || isWalletConnected) && contract && electionId) {
       fetchResults();
+    } else {
+      loadMockData();
     }
   }, [contract, electionId, isConnected, isWalletConnected]);
+
+  const loadMockData = () => {
+    setLoading(true);
+    setTimeout(() => {
+      setElection({
+        id: electionId,
+        name: "Student Council Election 2025",
+        description: "Vote for your student council representatives",
+        startTime: new Date('2025-05-15T17:15:00+05:30').getTime(),
+        endTime: new Date('2025-05-19T17:15:00+05:30').getTime(),
+        isActive: true,
+        totalVotes: "50"
+      });
+      const storedCandidates = JSON.parse(localStorage.getItem(`candidates_${electionId}`)) || [
+        { id: 0, name: "Alice Johnson", party: "Independent", age: "21", gender: "Female", voteCount: "20" },
+        { id: 1, name: "Bob Smith", party: "Democratic Party", age: "22", gender: "Male", voteCount: "15" },
+        { id: 2, name: "Clara Lee", party: "Republican Party", age: "20", gender: "Female", voteCount: "15" }
+      ];
+      setResults(storedCandidates);
+      setLoading(false);
+    }, 1000);
+  };
 
   const fetchResults = async () => {
     if (!contract || !electionId) return;
     setLoading(true);
     try {
-      // Fetch election details
       const [id, name, description, startTime, endTime, isActive, totalVotes] = await contract.getElection(electionId);
       setElection({ 
         id: id.toString(), 
@@ -64,10 +84,7 @@ const Results = () => {
         totalVotes: totalVotes.toString() 
       });
 
-      // Use getElectionCandidates function from the contract (correct function name)
       const candidates = await contract.getElectionCandidates(electionId);
-      
-      // Map candidates with their indexes as IDs
       setResults(candidates.map((candidate, index) => ({
         id: index.toString(),
         name: candidate.name,
@@ -79,7 +96,6 @@ const Results = () => {
     } catch (error) {
       console.error('Error fetching results:', error);
       toast.error('Failed to load election results. Please try again.');
-      // Redirect to elections page on error after a short delay
       setTimeout(() => {
         navigate('/elections');
       }, 3000);
@@ -95,26 +111,19 @@ const Results = () => {
         toast.error('MetaMask is not installed. Please install MetaMask to use this dApp.');
         return;
       }
-      
-      // Request account access
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      
       if (accounts.length > 0) {
         setIsWalletConnected(true);
         setWalletAccount(accounts[0]);
         toast.success('Wallet connected successfully!');
-        
-        // After connecting, fetch results
         fetchResults();
       }
     } catch (error) {
       console.error('Error connecting wallet:', error);
-      
       let errorMessage = 'Failed to connect wallet';
       if (error.code === 4001) {
-        errorMessage = 'Wallet connection rejected by user';
+        errorMessage = "Wallet connection rejected by user";
       }
-      
       toast.error(errorMessage);
     } finally {
       setIsWalletLoading(false);
@@ -127,14 +136,14 @@ const Results = () => {
       {
         data: results.map(candidate => parseInt(candidate.voteCount)),
         backgroundColor: [
-          '#4F46E5', // Indigo-600
-          '#EF4444', // Red-500
-          '#F59E0B', // Amber-500 
-          '#10B981', // Emerald-500
-          '#8B5CF6', // Violet-500
-          '#EC4899', // Pink-500
-          '#06B6D4', // Cyan-500
-          '#84CC16'  // Lime-500
+          '#4F46E5',
+          '#EF4444',
+          '#F59E0B',
+          '#10B981',
+          '#8B5CF6',
+          '#EC4899',
+          '#06B6D4',
+          '#84CC16'
         ],
         borderWidth: 1,
         borderColor: '#ffffff',
@@ -175,9 +184,9 @@ const Results = () => {
           family: "'Inter', sans-serif"
         },
         backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        titleColor: '#1F2937', // Gray-800
-        bodyColor: '#4B5563', // Gray-600
-        borderColor: '#E5E7EB', // Gray-200
+        titleColor: '#1F2937',
+        bodyColor: '#4B5563',
+        borderColor: '#E5E7EB',
         borderWidth: 1,
         padding: 12,
         cornerRadius: 6,
@@ -190,7 +199,6 @@ const Results = () => {
     cutout: '40%'
   };
 
-  // Wallet connection prompt
   const WalletConnectionPrompt = () => (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -274,7 +282,6 @@ const Results = () => {
     );
   }
 
-  // Format the end date
   const endDate = new Date(Number(election.endTime));
   const formatDate = (date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -297,7 +304,6 @@ const Results = () => {
               <FaArrowLeft className="h-5 w-5 mr-2" />
               <span className="font-medium">Back to Elections</span>
             </Link>
-            
             {(isConnected || isWalletConnected) && (
               <div className="flex items-center">
                 <div className="mr-4 text-right hidden sm:block">
@@ -315,8 +321,7 @@ const Results = () => {
               </div>
             )}
           </div>
-          
-          {/* Election Header */}
+
           <div className="bg-white shadow-lg rounded-xl p-6 mb-8">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between">
               <div>
@@ -343,14 +348,12 @@ const Results = () => {
             </div>
           </div>
 
-          {/* Results Section */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-white shadow-lg rounded-xl p-6 mb-8"
           >
             <h2 className="text-xl font-semibold mb-6 text-gray-800">Election Results</h2>
-            
             {results.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="h-80 flex items-center justify-center">
@@ -361,7 +364,6 @@ const Results = () => {
                     const totalVotes = parseInt(election.totalVotes);
                     const candidateVotes = parseInt(candidate.voteCount);
                     const percentage = totalVotes === 0 ? 0 : ((candidateVotes / totalVotes) * 100).toFixed(1);
-                    
                     return (
                       <motion.div 
                         key={candidate.id} 
@@ -384,7 +386,6 @@ const Results = () => {
                             </div>
                           </div>
                         </div>
-                        {/* Progress bar */}
                         <div className="mt-2 w-full bg-gray-200 rounded-full h-2.5">
                           <div 
                             className="bg-indigo-600 h-2.5 rounded-full"

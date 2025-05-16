@@ -1,7 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract Voting {
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+
+contract Voting is ReentrancyGuard, Pausable {
+    // Simple reentrancy lock
+    bool private locked;
+    modifier noReentrancy() {
+        require(!locked, "No reentrancy allowed");
+        locked = true;
+        _;
+        locked = false;
+    }
+
     // Structs
     struct Candidate {
         uint id;
@@ -24,6 +36,8 @@ contract Voting {
         mapping(address => bool) voters;
         mapping(address => bool) hasVoted;
         uint totalVotes;
+        uint winningCandidateId;
+        uint maxVotes;
     }
 
     struct PollInfo {
@@ -81,8 +95,8 @@ contract Voting {
         _;
     }
 
-    modifier votingNotStarted() {
-        require(block.timestamp < elections[electionCount].endTime, "Voting has already started");
+    modifier votingNotStarted(uint _electionId) {
+        require(block.timestamp < elections[_electionId].startTime, "Voting already started");
         _;
     }
 
@@ -92,11 +106,18 @@ contract Voting {
         admins[msg.sender] = true;
     }
 
+    // Owner pause/unpause
+    function pause() public onlyOwner {
+        _pause();
+    }
+    function unpause() public onlyOwner {
+        _unpause();
+    }
+
     // Admin Functions
-    function createElection(string memory _name, string memory _description, uint _endTime) public onlyAdmin {
+    function createElection(string memory _name, string memory _description, uint _endTime) public onlyAdmin whenNotPaused {
         require(_endTime > block.timestamp, "End time must be in the future");
         require(_endTime - block.timestamp <= maxVotingDuration, "Voting duration exceeds maximum allowed");
-        
         Election storage election = elections[electionCount];
         election.id = electionCount;
         election.name = _name;
@@ -104,11 +125,11 @@ contract Voting {
         election.startTime = block.timestamp;
         election.endTime = _endTime;
         election.isActive = true;
-        
+        election.winningCandidateId = 0;
+        election.maxVotes = 0;
         votingStatus = "Voting in progress";
         emit ElectionCreated(electionCount, _name, _endTime);
         emit VotingStarted(block.timestamp, _endTime);
-        
         electionCount++;
     }
 
@@ -116,14 +137,13 @@ contract Voting {
         public 
         onlyAdmin 
         electionExists(_electionId) 
-        votingNotStarted 
+        votingNotStarted(_electionId)
+        whenNotPaused
     {
         require(_age >= 18, "Candidate must be at least 18 years old");
         require(elections[_electionId].candidates.length < maxCandidates, "Maximum candidates reached");
-        
         Election storage election = elections[_electionId];
         uint candidateId = election.candidates.length;
-        
         election.candidates.push(Candidate({
             id: candidateId,
             name: _name,
@@ -133,36 +153,23 @@ contract Voting {
             candidateAddress: msg.sender,
             voteCount: 0
         }));
-        
         emit CandidateAdded(_electionId, candidateId, _name, _party);
     }
 
-    function registerVoter(address _voter) public onlyAdmin {
+    function registerVoter(address _voter) public onlyAdmin whenNotPaused {
         require(!registeredVoters[_voter], "Voter already registered");
         registeredVoters[_voter] = true;
         emit VoterRegistered(_voter);
     }
 
-    function endElection(uint _electionId) public onlyAdmin electionExists(_electionId) {
+    function endElection(uint _electionId) public onlyAdmin electionExists(_electionId) whenNotPaused noReentrancy {
         Election storage election = elections[_electionId];
         require(election.isActive, "Election already ended");
-        
         election.isActive = false;
         votingStatus = "Voting has ended";
-        
-        // Calculate winner
-        uint maxVotes = 0;
-        uint winningCandidateIndex = 0;
-        
-        for(uint i = 0; i < election.candidates.length; i++) {
-            if(election.candidates[i].voteCount > maxVotes) {
-                maxVotes = election.candidates[i].voteCount;
-                winningCandidateIndex = i;
-            }
-        }
-        
-        if(maxVotes > 0) {
-            Candidate memory winner = election.candidates[winningCandidateIndex];
+        // Use tracked winner
+        if (election.maxVotes > 0) {
+            Candidate memory winner = election.candidates[election.winningCandidateId];
             pollResults[_electionId].push(PollInfo({
                 pollId: _electionId,
                 winnerName: winner.name,
@@ -170,15 +177,13 @@ contract Voting {
                 winnerAdd: winner.candidateAddress
             }));
         }
-        
         emit ElectionEnded(_electionId);
     }
 
     // Voter Functions
-    function voterRegister(string memory /*_name*/, uint _age, string memory /*_gender*/) public {
+    function voterRegister(uint _age) public whenNotPaused {
         require(!registeredVoters[msg.sender], "Already registered as voter");
         require(_age >= 18, "Must be at least 18 years old");
-        
         registeredVoters[msg.sender] = true;
         emit VoterRegistered(msg.sender);
     }
@@ -188,15 +193,20 @@ contract Voting {
         onlyRegisteredVoter 
         electionExists(_electionId) 
         electionActive(_electionId) 
+        whenNotPaused
+        noReentrancy
     {
         Election storage election = elections[_electionId];
         require(!election.hasVoted[msg.sender], "Already voted");
         require(_candidateId < election.candidates.length, "Invalid candidate ID");
-        
         election.hasVoted[msg.sender] = true;
         election.candidates[_candidateId].voteCount++;
         election.totalVotes++;
-        
+        // Track winner as votes come in
+        if (election.candidates[_candidateId].voteCount > election.maxVotes) {
+            election.maxVotes = election.candidates[_candidateId].voteCount;
+            election.winningCandidateId = _candidateId;
+        }
         emit VoteCast(_electionId, msg.sender, _candidateId);
     }
 
@@ -270,32 +280,31 @@ contract Voting {
     }
 
     // Emergency Functions
-    function emergencyStop(uint _electionId) public onlyAdmin electionExists(_electionId) {
+    function emergencyStop(uint _electionId) public onlyAdmin electionExists(_electionId) whenNotPaused noReentrancy {
         Election storage election = elections[_electionId];
         require(election.isActive, "Election already ended");
-        
         election.isActive = false;
         votingStatus = "Voting stopped by admin";
         emit ElectionEnded(_electionId);
     }
 
-    function addAdmin(address _admin) public onlyOwner {
+    function addAdmin(address _admin) public onlyOwner whenNotPaused {
         require(!admins[_admin], "Address is already an admin");
         admins[_admin] = true;
     }
 
-    function removeAdmin(address _admin) public onlyOwner {
+    function removeAdmin(address _admin) public onlyOwner whenNotPaused {
         require(_admin != owner, "Cannot remove owner as admin");
         require(admins[_admin], "Address is not an admin");
         admins[_admin] = false;
     }
 
-    function updateMaxCandidates(uint _maxCandidates) public onlyOwner {
+    function updateMaxCandidates(uint _maxCandidates) public onlyOwner whenNotPaused {
         require(_maxCandidates > 0, "Max candidates must be greater than 0");
         maxCandidates = _maxCandidates;
     }
 
-    function updateMaxVotingDuration(uint _maxDuration) public onlyOwner {
+    function updateMaxVotingDuration(uint _maxDuration) public onlyOwner whenNotPaused {
         require(_maxDuration > 0, "Max duration must be greater than 0");
         maxVotingDuration = _maxDuration;
     }

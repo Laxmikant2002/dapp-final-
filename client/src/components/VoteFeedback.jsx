@@ -14,12 +14,10 @@ const VoteFeedback = ({ onClose }) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      // TODO: Replace with actual API call or blockchain event
-      // For a production app, this feedback could be stored on-chain using:
-      // await contract.submitFeedback(electionId, rating, comment);
       await new Promise(resolve => setTimeout(resolve, 1000));
       toast.success('Thank you for your feedback!');
-      navigate('/elections');
+      onClose();
+      navigate('/');
     } catch (error) {
       console.error('Error submitting feedback:', error);
       toast.error('Failed to submit feedback');
@@ -29,9 +27,10 @@ const VoteFeedback = ({ onClose }) => {
   };
 
   const handleSkip = () => {
-    navigate('/elections');
+    onClose();
+    navigate('/');
   };
-  
+
   const getRatingLabel = () => {
     switch (rating) {
       case 1: return 'Poor';
@@ -77,11 +76,7 @@ const VoteFeedback = ({ onClose }) => {
                     whileTap={{ scale: 0.9 }}
                     aria-label={`Rate ${star} star${star !== 1 ? 's' : ''}`}
                     aria-pressed={rating >= star}
-                    className={`h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors ${
-                      rating >= star
-                        ? 'text-yellow-400 hover:text-yellow-500'
-                        : 'text-gray-300 hover:text-gray-400'
-                    }`}
+                    className={`h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors ${rating >= star ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-gray-400'}`}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -132,7 +127,7 @@ const VoteFeedback = ({ onClose }) => {
               className="inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               aria-label="Skip feedback submission"
             >
-              Back to Elections
+              Back to Home
             </motion.button>
             <motion.button
               type="button"
@@ -140,16 +135,14 @@ const VoteFeedback = ({ onClose }) => {
               disabled={submitting}
               whileHover={{ scale: submitting ? 1 : 1.03 }}
               whileTap={{ scale: submitting ? 1 : 0.97 }}
-              className={`inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
-                submitting ? 'opacity-70 cursor-not-allowed' : ''
-              }`}
+              className={`inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${submitting ? 'opacity-70 cursor-not-allowed' : ''}`}
               aria-label="Submit feedback"
             >
               {submitting ? (
                 <>
                   <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 0 7.938l3-2.647z"></path>
                   </svg>
                   Submitting...
                 </>
@@ -167,4 +160,4 @@ const VoteFeedback = ({ onClose }) => {
   );
 };
 
-export default VoteFeedback; 
+export default VoteFeedback;
